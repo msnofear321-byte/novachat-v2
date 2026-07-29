@@ -1,0 +1,17 @@
+{
+  "name": "novachat-root",
+  "private": true,
+  "scripts": {
+    "dev": "cd novachat && npm run dev",
+    "build": "cd novachat && npm run build"
+  },
+  "dependencies": {
+    "firebase": "^12.16.0",
+    "react-router-dom": "^7.18.1",
+    "run": "^1.5.0",
+    "simple-peer": "^9.11.1"
+  },
+  "devDependencies": {
+    "@types/simple-peer": "^9.11.9"
+  }
+}
