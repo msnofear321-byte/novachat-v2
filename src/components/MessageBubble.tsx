@@ -270,6 +270,16 @@ export default function MessageBubble({
             <span className={`text-[10.5px] ${isOwn ? 'text-white/50' : 'text-[var(--text-muted)]'}`}>
               {formatTimestamp(message.createdAt)}
             </span>
+            {message.pending && isOwn && (
+              <span className={`text-[10px] ${isOwn ? 'text-white/70' : 'text-[var(--text-muted)]'} flex items-center gap-1`}>
+                <span className="inline-flex gap-0.5">
+                  <span className="w-1 h-1 rounded-full bg-current opacity-70 animate-pulse" />
+                  <span className="w-1 h-1 rounded-full bg-current opacity-70 animate-pulse [animation-delay:120ms]" />
+                  <span className="w-1 h-1 rounded-full bg-current opacity-70 animate-pulse [animation-delay:240ms]" />
+                </span>
+                Sending
+              </span>
+            )}
             {message.edited && (
               <span className={`text-[10px] italic ${isOwn ? 'text-white/40' : 'text-[var(--text-muted)]'}`}>(edited)</span>
             )}

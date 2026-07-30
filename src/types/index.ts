@@ -39,6 +39,7 @@ export interface Message {
   deletedForEveryone?: boolean;
   forwarded: boolean;
   duration?: number;
+  pending?: boolean;
 }
 
 export interface Conversation {

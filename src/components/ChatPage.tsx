@@ -87,7 +87,10 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
   const deliveredRef = useRef(false);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
+    if (!messagesEndRef.current) return;
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
+    });
   }, []);
 
   const scrollToMessage = useCallback((messageId: string) => {
@@ -101,6 +104,7 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
 
   useEffect(() => {
     deliveredRef.current = false;
+    setPendingMessages([]);
     setLoading(true);
     prevMsgCountRef.current = 0;
     const unsub = subscribeToMessages(

@@ -80,7 +80,10 @@ export default function GroupChatPage({ groupId, onBack }: GroupChatPageProps) {
   userMapRef.current = userMap;
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
+    if (!messagesEndRef.current) return;
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
+    });
   }, []);
 
   useEffect(() => {
