@@ -71,7 +71,7 @@ export default function VoiceMessage({ url, isOwn, duration: propDuration }: Voi
   }
 
   return (
-    <div className="flex items-center gap-3 min-w-[200px]">
+    <div className="flex items-center gap-3 min-w-0 w-full">
       <motion.button whileTap={{ scale: 0.85 }} onClick={togglePlay}
         className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
           isOwn

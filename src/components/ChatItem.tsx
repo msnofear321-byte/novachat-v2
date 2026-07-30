@@ -41,7 +41,7 @@ export default function ChatItem({ conversation, otherUser, isActive, onClick, o
     <motion.div
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className={`group relative flex items-center gap-3.5 px-4 py-3 cursor-pointer transition-all duration-200 border-b border-[var(--border-secondary)] ${
+      className={`group relative flex items-center gap-2.5 sm:gap-3.5 px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer transition-all duration-200 border-b border-[var(--border-secondary)] ${
         isActive
           ? 'bg-[var(--accent-primary)]/8 border-l-2 border-l-[var(--accent-primary)]'
           : 'hover:bg-[var(--hover-bg)] border-l-2 border-l-transparent'
@@ -55,23 +55,23 @@ export default function ChatItem({ conversation, otherUser, isActive, onClick, o
           online={isOnline}
         />
         {isOnline && (
-          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--success)] border-2 border-[var(--bg-sidebar)]" />
+          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-[var(--success)] border-2 border-[var(--bg-sidebar)]" />
         )}
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-0.5">
-          <h3 className={`font-semibold text-[15px] truncate ${isActive ? 'text-[var(--accent-primary)]' : 'text-[var(--text-primary)]'}`}>
+          <h3 className={`font-semibold text-[14px] sm:text-[15px] truncate ${isActive ? 'text-[var(--accent-primary)]' : 'text-[var(--text-primary)]'}`}>
             {otherUser?.displayName || 'Unknown'}
           </h3>
-          <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0 ml-2">
             {conversation.pinned && (
-              <HiOutlineMapPin className="w-3.5 h-3.5 text-[var(--accent-primary)] rotate-45" />
+              <HiOutlineMapPin className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-[var(--accent-primary)] rotate-45" />
             )}
             {conversation.muted && (
-              <HiOutlineBellSlash className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+              <HiOutlineBellSlash className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-[var(--text-muted)]" />
             )}
-            <span className={`text-[11px] flex-shrink-0 ${
+            <span className={`text-[10px] sm:text-[11px] flex-shrink-0 ${
               conversation.unreadCount > 0 ? 'text-[var(--accent-primary)] font-medium' : 'text-[var(--text-muted)]'
             }`}>
               {conversation.lastMessageTime ? formatChatTime(conversation.lastMessageTime) : ''}
@@ -80,14 +80,14 @@ export default function ChatItem({ conversation, otherUser, isActive, onClick, o
         </div>
         <div className="flex items-center justify-between">
           {isTyping ? (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 sm:gap-1.5">
               <span className="typing-dots">
                 <span /><span /><span />
               </span>
-              <span className="text-[13px] text-[var(--accent-primary)] font-medium">typing...</span>
+              <span className="text-[12px] sm:text-[13px] text-[var(--accent-primary)] font-medium">typing...</span>
             </div>
           ) : (
-            <p className={`text-[13px] truncate flex-1 min-w-0 mr-2 ${
+            <p className={`text-[12px] sm:text-[13px] truncate flex-1 min-w-0 mr-2 ${
               conversation.unreadCount > 0 ? 'text-[var(--text-primary)] font-medium' : 'text-[var(--text-secondary)]'
             }`}>
               {lastMsg}

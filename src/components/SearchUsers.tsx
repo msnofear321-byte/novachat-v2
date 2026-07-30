@@ -62,11 +62,11 @@ export default function SearchUsers({ isOpen, onClose, onConversationCreated }: 
             initial={{ opacity: 0, scale: 0.95, y: -12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -12 }}
-            className="w-full max-w-[480px] glass-premium rounded-[24px] overflow-hidden"
+            className="w-full max-w-[480px] glass-premium rounded-[20px] sm:rounded-[24px] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--border-primary)]">
-              <HiOutlineMagnifyingGlass className="w-5 h-5 text-[var(--text-muted)]" />
+            <div className="flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-3 sm:py-4 border-b border-[var(--border-primary)]">
+              <HiOutlineMagnifyingGlass className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--text-muted)] flex-shrink-0" />
               <input
                 autoFocus
                 type="text"
@@ -74,10 +74,10 @@ export default function SearchUsers({ isOpen, onClose, onConversationCreated }: 
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(e as unknown as FormEvent); }}
                 placeholder="Search users by name..."
-                className="flex-1 bg-transparent text-[var(--text-primary)] text-[15px] placeholder-[var(--text-muted)] focus:outline-none"
+                className="flex-1 bg-transparent text-[var(--text-primary)] text-[14px] sm:text-[15px] placeholder-[var(--text-muted)] focus:outline-none"
               />
-              <button onClick={handleClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--hover-bg)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all">
-                <HiOutlineXMark className="w-5 h-5" />
+              <button onClick={handleClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--hover-bg)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all flex-shrink-0">
+                <HiOutlineXMark className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
 

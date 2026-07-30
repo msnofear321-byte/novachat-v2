@@ -26,7 +26,7 @@ export default function ForgotPasswordScreen() {
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center px-4 relative overflow-hidden" style={{ background: '#050505' }}>
+    <div className="min-h-[100dvh] w-full flex items-center justify-center px-4 py-8 relative overflow-hidden" style={{ background: '#050505' }}>
       {/* Background orbs */}
       <div className="absolute inset-0 pointer-events-none">
         <motion.div

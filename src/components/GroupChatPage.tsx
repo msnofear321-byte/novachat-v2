@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlineMagnifyingGlass, HiOutlineArrowLeft, HiOutlineInformationCircle, HiOutlineXMark } from 'react-icons/hi2';
 import { useAuth } from '@/context/AuthContext';
@@ -40,12 +40,33 @@ interface GroupMessage {
   replyTo?: { id: string; text: string; senderId: string; type: string };
 }
 
+function mergeGroupMessages(serverMessages: GroupMessage[], pendingMessages: GroupMessage[]) {
+  const merged = [...serverMessages];
+
+  pendingMessages.forEach((pending) => {
+    const alreadyExists = serverMessages.some((server) => (
+      server.senderId === pending.senderId &&
+      server.groupId === pending.groupId &&
+      server.type === pending.type &&
+      server.text === pending.text &&
+      server.createdAt === pending.createdAt
+    ));
+
+    if (!alreadyExists) {
+      merged.push(pending);
+    }
+  });
+
+  return merged.sort((a, b) => a.createdAt - b.createdAt);
+}
+
 export default function GroupChatPage({ groupId, onBack }: GroupChatPageProps) {
   const { user } = useAuth();
   const { wallpaper } = useWallpaper();
 
   const [group, setGroup] = useState<Group | null>(null);
   const [messages, setMessages] = useState<GroupMessage[]>([]);
+  const [pendingMessages, setPendingMessages] = useState<GroupMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [userMap, setUserMap] = useState<Record<string, { displayName: string; photoURL: string }>>({});
   const [searchQuery, setSearchQuery] = useState(false);
@@ -92,18 +113,38 @@ export default function GroupChatPage({ groupId, onBack }: GroupChatPageProps) {
     return unsub;
   }, [groupId]);
 
+  const visibleMessages = useMemo(() => mergeGroupMessages(messages, pendingMessages), [messages, pendingMessages]);
+
   useEffect(() => {
     const timeout = setTimeout(() => scrollToBottom('auto'), 100);
     return () => clearTimeout(timeout);
-  }, [messages.length, scrollToBottom]);
+  }, [visibleMessages.length, scrollToBottom]);
 
   async function handleSend(text: string) {
     if (!user) return;
+    const createdAt = Date.now();
+    const optimisticMessage: GroupMessage = {
+      id: `optimistic-${createdAt}-${Math.random().toString(36).slice(2)}`,
+      groupId,
+      senderId: user.uid,
+      text,
+      createdAt,
+      type: 'text',
+      starred: false,
+      deleted: false,
+      forwarded: false,
+    };
+
+    setPendingMessages((prev) => [...prev, optimisticMessage]);
+    setSendError(null);
+    setTimeout(() => scrollToBottom(), 50);
+
     try {
-      setSendError(null);
       await sendGroupMessage(groupId, text);
+      setPendingMessages((prev) => prev.filter((item) => item.id !== optimisticMessage.id));
       setTimeout(() => scrollToBottom(), 50);
     } catch (error) {
+      setPendingMessages((prev) => prev.filter((item) => item.id !== optimisticMessage.id));
       setSendError(error instanceof Error ? error.message : 'Failed to send');
       setTimeout(() => setSendError(null), 8000);
     }
@@ -143,8 +184,8 @@ export default function GroupChatPage({ groupId, onBack }: GroupChatPageProps) {
   }
 
   const filteredMessages = searchText.trim()
-    ? messages.filter((m) => m.text.toLowerCase().includes(searchText.toLowerCase()))
-    : messages;
+    ? visibleMessages.filter((m) => m.text.toLowerCase().includes(searchText.toLowerCase()))
+    : visibleMessages;
 
   return (
     <div className="h-full flex flex-col bg-[var(--bg-chat)] relative">
@@ -198,19 +239,19 @@ export default function GroupChatPage({ groupId, onBack }: GroupChatPageProps) {
       </AnimatePresence>
 
       {/* Messages */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto custom-scrollbar py-4"
+      <div ref={containerRef} className="flex-1 overflow-y-auto custom-scrollbar momentum-scroll py-3 sm:py-4 pb-24 sm:pb-28"
         style={wallpaper?.css ? { backgroundImage: wallpaper.css, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
         {loading ? (
           <MessageSkeleton />
         ) : filteredMessages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full">
+          <div className="flex flex-col items-center justify-center h-full px-4">
             <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-20 h-20 rounded-[22px] bg-gradient-to-br from-[var(--accent-primary)]/15 to-transparent flex items-center justify-center mb-5 border border-[var(--accent-primary)]/10">
-              <svg className="w-10 h-10 text-[var(--accent-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-[18px] sm:rounded-[22px] bg-gradient-to-br from-[var(--accent-primary)]/15 to-transparent flex items-center justify-center mb-4 sm:mb-5 border border-[var(--accent-primary)]/10">
+              <svg className="w-8 h-8 sm:w-10 sm:h-10 text-[var(--accent-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
               </svg>
             </motion.div>
-            <p className="text-[var(--text-secondary)] text-[14px] text-center">No messages yet. Say hello!</p>
+            <p className="text-[var(--text-secondary)] text-[13px] sm:text-[14px] text-center">No messages yet. Say hello!</p>
           </div>
         ) : (
           <>
@@ -230,9 +271,9 @@ export default function GroupChatPage({ groupId, onBack }: GroupChatPageProps) {
               if (msg.deleted) {
                 return (
                   <motion.div key={msg.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                    className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-4 mb-1`}>
-                    <div className="px-4 py-2.5 bg-[var(--bg-input)] rounded-[18px] border border-[var(--border-primary)]">
-                      <p className="text-[13px] italic text-[var(--text-muted)]">Message deleted</p>
+                    className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-2 sm:px-4 mb-1`}>
+                    <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-[var(--bg-input)] rounded-[16px] sm:rounded-[18px] border border-[var(--border-primary)] max-w-[85%] sm:max-w-[70%]">
+                      <p className="text-[12px] sm:text-[13px] italic text-[var(--text-muted)]">Message deleted</p>
                     </div>
                   </motion.div>
                 );
@@ -242,16 +283,16 @@ export default function GroupChatPage({ groupId, onBack }: GroupChatPageProps) {
                 <div key={msg.id}>
                   {showDateSep && (
                     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                      className="flex items-center justify-center my-4 px-4">
-                      <div className="px-3.5 py-1.5 rounded-full bg-[var(--bg-card)]/80 backdrop-blur-sm border border-[var(--border-primary)] text-[11px] font-medium text-[var(--text-muted)] shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
+                      className="flex items-center justify-center my-3 sm:my-4 px-2 sm:px-4">
+                      <div className="px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-[var(--bg-card)]/80 backdrop-blur-sm border border-[var(--border-primary)] text-[10px] sm:text-[11px] font-medium text-[var(--text-muted)] shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
                         {formatDateSeparator(msg.createdAt)}
                       </div>
                     </motion.div>
                   )}
                   <motion.div initial={{ opacity: 0, y: 6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                    className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-4 mb-1`}>
-                    <div className={`relative max-w-[70%] flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
+                    className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-2 sm:px-4 mb-1`}>
+                    <div className={`relative max-w-[85%] sm:max-w-[75%] md:max-w-[70%] flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
                       {!isOwn && showSender && (
                         <div className="flex items-center gap-1.5 mb-1 ml-1">
                           {senderInfo?.photoURL ? (
@@ -279,16 +320,16 @@ export default function GroupChatPage({ groupId, onBack }: GroupChatPageProps) {
                         )}
                         {(msg.type === 'image' || msg.type === 'gif') && msg.mediaURL && (
                           <div className="overflow-hidden">
-                            <img src={msg.mediaURL} alt={msg.type} className="w-full max-w-[280px] max-h-[260px] object-cover" />
+                            <img src={msg.mediaURL} alt={msg.type} className="w-full max-w-[240px] sm:max-w-[280px] max-h-[200px] sm:max-h-[260px] object-cover" />
                           </div>
                         )}
                         {msg.type === 'video' && msg.mediaURL && (
                           <div className="overflow-hidden">
-                            <video src={msg.mediaURL} controls preload="metadata" className="w-full max-w-[280px] max-h-[260px]" />
+                            <video src={msg.mediaURL} controls preload="metadata" className="w-full max-w-[240px] sm:max-w-[280px] max-h-[200px] sm:max-h-[260px]" />
                           </div>
                         )}
                         {msg.type === 'voice' && msg.mediaURL && (
-                          <div className="px-3 py-2.5">
+                          <div className="px-2 sm:px-3 py-2 sm:py-2.5">
                             <VoiceMessage url={msg.mediaURL} isOwn={isOwn} duration={msg.duration} />
                           </div>
                         )}

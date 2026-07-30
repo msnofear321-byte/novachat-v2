@@ -153,7 +153,7 @@ export default function EmojiPicker({ onSelect, onClose: _onClose }: EmojiPicker
 
   return (
     <motion.div initial={{ opacity: 0, y: 12, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: 0.95 }}
-      className="absolute bottom-full left-4 mb-2 w-[360px] glass-premium rounded-[18px] shadow-[var(--shadow-xl)] z-20 overflow-hidden">
+      className="absolute bottom-full left-2 sm:left-4 mb-2 w-[calc(100vw-16px)] sm:w-[360px] glass-premium rounded-[16px] sm:rounded-[18px] shadow-[var(--shadow-xl)] z-20 overflow-hidden">
 
       <div className="px-3 pt-2 pb-1">
         <input

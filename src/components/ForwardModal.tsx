@@ -67,7 +67,7 @@ export default function ForwardModal({ message, onClose }: ForwardModalProps) {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
       <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 12 }}
-        className="w-full max-w-[420px] glass-premium rounded-[24px] overflow-hidden"
+        className="w-full max-w-[420px] glass-premium rounded-[20px] sm:rounded-[24px] overflow-hidden"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-primary)]">
           <h3 className="font-semibold text-[var(--text-primary)]">Forward Message</h3>

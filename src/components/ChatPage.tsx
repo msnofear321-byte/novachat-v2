@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlineMagnifyingGlass, HiOutlineArrowLeft, HiOutlinePhone, HiOutlineVideoCamera, HiOutlineXMark, HiOutlineInformationCircle } from 'react-icons/hi2';
 import { HiOutlineBan } from 'react-icons/hi';
@@ -42,11 +42,32 @@ interface ChatPageProps {
   onConversationDeleted?: () => void;
 }
 
+function mergeMessages(serverMessages: Message[], pendingMessages: Message[]) {
+  const merged = [...serverMessages];
+
+  pendingMessages.forEach((pending) => {
+    const alreadyExists = serverMessages.some((server) => (
+      server.senderId === pending.senderId &&
+      server.receiverId === pending.receiverId &&
+      server.type === pending.type &&
+      server.text === pending.text &&
+      server.createdAt === pending.createdAt
+    ));
+
+    if (!alreadyExists) {
+      merged.push(pending);
+    }
+  });
+
+  return merged.sort((a, b) => a.createdAt - b.createdAt);
+}
+
 export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSearchOpen, onConversationDeleted }: ChatPageProps) {
   const { user } = useAuth();
   const { wallpaper } = useWallpaper();
 
   const [messages, setMessages] = useState<Message[]>([]);
+  const [pendingMessages, setPendingMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [otherUser, setOtherUser] = useState<User | undefined>();
   const [conversation, setConversation] = useState<Conversation | undefined>();
@@ -160,10 +181,12 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
     return unsub;
   }, [conversationId, user]);
 
+  const visibleMessages = useMemo(() => mergeMessages(messages, pendingMessages), [messages, pendingMessages]);
+
   useEffect(() => {
     const timeout = setTimeout(() => scrollToBottom('auto'), 100);
     return () => clearTimeout(timeout);
-  }, [messages.length, scrollToBottom]);
+  }, [visibleMessages.length, scrollToBottom]);
 
   function handleTyping(active: boolean) {
     if (!user) return;
@@ -178,14 +201,35 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
 
   async function handleSend(text: string) {
     if (!user) return;
+    const createdAt = Date.now();
+    const optimisticMessage: Message = {
+      id: `optimistic-${createdAt}-${Math.random().toString(36).slice(2)}`,
+      conversationId,
+      senderId: user.uid,
+      receiverId: otherId,
+      text,
+      createdAt,
+      read: false,
+      delivered: false,
+      type: 'text',
+      starred: false,
+      deleted: false,
+      forwarded: false,
+      pending: true,
+    };
+
+    setPendingMessages((prev) => [...prev, optimisticMessage]);
+    setReplyTo(null);
+    setSendError(null);
+    setTimeout(() => scrollToBottom(), 50);
+
     try {
-      setSendError(null);
       const msgData: Record<string, unknown> = {
         conversationId,
         senderId: user.uid,
         receiverId: otherId,
         text,
-        createdAt: Date.now(),
+        createdAt,
         read: false,
         delivered: false,
         type: 'text',
@@ -197,9 +241,10 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
         msgData.replyTo = { id: replyTo.id, text: replyTo.text, senderId: replyTo.senderId, type: replyTo.type };
       }
       await sendMessage(conversationId, msgData as Omit<Message, 'id'>);
-      setReplyTo(null);
+      setPendingMessages((prev) => prev.filter((item) => item.id !== optimisticMessage.id));
       setTimeout(() => scrollToBottom(), 50);
     } catch (error) {
+      setPendingMessages((prev) => prev.filter((item) => item.id !== optimisticMessage.id));
       console.error('Failed to send message:', error);
       setSendError(error instanceof Error ? error.message : 'Failed to send message.');
       setTimeout(() => setSendError(null), 8000);
@@ -294,14 +339,14 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
   }
 
   const filteredMessages = searchQuery.trim()
-    ? messages.filter((m) => m.text.toLowerCase().includes(searchQuery.toLowerCase()))
-    : messages;
+    ? visibleMessages.filter((m) => m.text.toLowerCase().includes(searchQuery.toLowerCase()))
+    : visibleMessages;
 
   return (
     <div className="h-full flex flex-col bg-[var(--bg-chat)] relative">
       {/* Header */}
-      <div className="px-4 md:px-5 py-3 border-b border-[var(--border-primary)] bg-[var(--bg-card)]/80 backdrop-blur-xl">
-        <div className="flex items-center gap-3">
+      <div className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 border-b border-[var(--border-primary)] bg-[var(--bg-card)]/80 backdrop-blur-xl flex-shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3">
           {onBack && (
             <motion.button whileTap={{ scale: 0.9 }} onClick={onBack} className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] transition-all md:hidden flex-shrink-0">
               <HiOutlineArrowLeft className="w-5 h-5" />
@@ -390,7 +435,7 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
       </AnimatePresence>
 
       {/* Messages */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto custom-scrollbar py-4"
+      <div ref={containerRef} className="flex-1 overflow-y-auto custom-scrollbar momentum-scroll py-3 sm:py-4 pb-24 sm:pb-28"
         style={wallpaper?.css ? { backgroundImage: wallpaper.css, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
         {loading ? (
           <MessageSkeleton />
@@ -484,23 +529,22 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
         )}
       </AnimatePresence>
 
-      {/* Input */}
-      {!blockedByMe && (
-        <MessageInput
-          onSend={handleSend}
-          onFileSelect={handleFileSelect}
-          onTyping={handleTyping}
-          onVoiceRecorded={handleVoiceRecorded}
-          uploadProgress={uploadProgress}
-          replyingTo={!!replyTo}
-        />
-      )}
-
-      {/* Reply preview */}
-      <div className="absolute bottom-[76px] left-0 right-0">
+      {/* Reply preview + Input */}
+      <div className="flex-shrink-0">
         <AnimatePresence>
           <ReplyPreview replyTo={replyTo} onCancel={() => setReplyTo(null)} otherUserName={otherUser?.displayName} />
         </AnimatePresence>
+
+        {!blockedByMe && (
+          <MessageInput
+            onSend={handleSend}
+            onFileSelect={handleFileSelect}
+            onTyping={handleTyping}
+            onVoiceRecorded={handleVoiceRecorded}
+            uploadProgress={uploadProgress}
+            replyingTo={!!replyTo}
+          />
+        )}
       </div>
 
       {/* Forward modal */}

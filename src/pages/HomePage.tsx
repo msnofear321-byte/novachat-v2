@@ -86,14 +86,14 @@ export default function HomePage() {
         }`}
       >
         {/* Header with profile + search */}
-        <div className="px-4 pt-4 pb-2">
+        <div className="px-3 sm:px-4 pt-3 sm:pt-4 pb-2">
           {/* Top row: Avatar + title + settings */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button onClick={() => navigate('/profile')} className="relative">
                 <UserAvatar photoURL={user?.photoURL ?? undefined} displayName={user?.displayName || '?'} size="sm" online />
               </button>
-              <h2 className="text-[20px] font-bold text-[var(--text-primary)]">Chats</h2>
+              <h2 className="text-[18px] sm:text-[20px] font-bold text-[var(--text-primary)]">Chats</h2>
               {totalUnread > 0 && (
                 <span className="glow-badge">{totalUnread > 99 ? '99+' : totalUnread}</span>
               )}
@@ -103,9 +103,9 @@ export default function HomePage() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => navigate('/settings')}
-                className="w-9 h-9 rounded-[11px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] transition-all"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-[10px] sm:rounded-[11px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] transition-all"
               >
-                <HiOutlineCog6Tooth className="w-[20px] h-[20px]" />
+                <HiOutlineCog6Tooth className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" />
               </motion.button>
             </div>
           </div>
@@ -114,14 +114,14 @@ export default function HomePage() {
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={() => setSearchOpen(true)}
-            className="w-full flex items-center gap-3 px-4 py-2.5 bg-[var(--bg-input)] border border-[var(--border-primary)] rounded-[14px] text-[var(--text-muted)] text-[13px] hover:border-[var(--accent-primary)]/30 hover:bg-[var(--hover-bg)] transition-all duration-200"
+            className="w-full flex items-center gap-3 px-3 sm:px-4 py-2 sm:py-2.5 bg-[var(--bg-input)] border border-[var(--border-primary)] rounded-[12px] sm:rounded-[14px] text-[var(--text-muted)] text-[12px] sm:text-[13px] hover:border-[var(--accent-primary)]/30 hover:bg-[var(--hover-bg)] transition-all duration-200"
           >
-            <HiOutlineMagnifyingGlass className="w-4 h-4 flex-shrink-0" />
+            <HiOutlineMagnifyingGlass className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
             <span>Search users to chat...</span>
           </motion.button>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 overflow-y-auto custom-scrollbar pb-[calc(72px+env(safe-area-inset-bottom,0px))]">
           <MusicNotesStrip />
           <ChatList
             searchQuery=""

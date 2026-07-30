@@ -78,7 +78,7 @@ function GroupChatPageLoader() {
 function GroupChatRoute() {
   return (
     <ProtectedRoute>
-      <GroupChatPageLoader />
+      <PageTransition><GroupChatPageLoader /></PageTransition>
     </ProtectedRoute>
   );
 }

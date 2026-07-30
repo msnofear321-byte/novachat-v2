@@ -262,7 +262,7 @@ export default function SecretChatPage() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-[var(--bg-chat)]">
+    <div className="min-h-[100dvh] flex flex-col bg-[var(--bg-chat)]">
       <div className="h-14 px-4 flex items-center gap-3 border-b border-[var(--border-primary)]" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <button
           onClick={() => navigate('/')}

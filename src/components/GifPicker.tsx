@@ -45,7 +45,7 @@ export default function GifPicker({ onSelect, onClose }: GifPickerProps) {
 
   return (
     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-      className="w-full h-[320px] bg-[var(--bg-card)] border-t border-[var(--border-primary)] flex flex-col">
+      className="w-full max-h-[320px] h-[240px] sm:h-[320px] bg-[var(--bg-card)] border-t border-[var(--border-primary)] flex flex-col">
       <form onSubmit={handleSearch} className="flex items-center gap-2 px-4 py-3 border-b border-[var(--border-primary)]">
         <HiOutlineMagnifyingGlass className="w-4 h-4 text-[var(--text-muted)]" />
         <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search GIFs..."

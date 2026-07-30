@@ -513,6 +513,26 @@ input:-webkit-autofill:focus {
   .hover-bg:active { background: var(--hover-bg-strong); }
 }
 
+html, body, #root {
+  min-height: 100%;
+  min-height: 100dvh;
+  overscroll-behavior-y: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+body {
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  user-select: none;
+}
+
+button, input, textarea, select {
+  font: inherit;
+  touch-action: manipulation;
+}
+
 /* ── Custom Scrollbar ────────────────────────────── */
 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -894,5 +914,78 @@ input:-webkit-autofill:focus {
 @supports (height: 100dvh) {
   html {
     --dvh: 1dvh;
+  }
+}
+
+/* ── Mobile Responsive Overrides ──────────────── */
+@media (max-width: 639px) {
+  html, body, #root {
+    overflow-x: hidden;
+  }
+  .neon-glass {
+    padding: 1.5rem !important;
+  }
+  .neon-glass .space-y-5 {
+    margin-top: 0.5rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .neon-glass {
+    padding: 1.25rem !important;
+    border-radius: 20px !important;
+  }
+  .btn-primary, .neon-btn {
+    padding: 12px 20px !important;
+    font-size: 14px !important;
+  }
+}
+
+/* ── Smooth scroll container for messages ──────── */
+.smooth-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+/* ── Momentum scrolling for mobile ─────────────── */
+.momentum-scroll {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+/* ── Message input safe area ───────────────────── */
+.safe-input-area {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 10px);
+}
+
+.safe-area-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
+}
+
+/* ── Reduced motion ────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Mobile tap highlight ──────────────────────── */
+@media (hover: none) and (pointer: coarse) {
+  .message-actions {
+    display: flex !important;
+    opacity: 1 !important;
+    position: static !important;
+    transform: none !important;
+    margin-top: 4px;
+  }
+  .message-actions > div {
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    gap: 2px !important;
   }
 }

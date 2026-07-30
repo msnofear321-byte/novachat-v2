@@ -24,9 +24,9 @@ export default function MobileBottomNav({ onOpenSearch, totalUnread = 0 }: Mobil
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden safe-area-bottom">
-      <div className="bg-[var(--bg-card)]/95 backdrop-blur-xl border-t border-[var(--border-primary)]">
-        <nav className="flex items-center justify-around h-[56px] px-2">
+    <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
+      <div className="bg-[var(--bg-card)]/95 backdrop-blur-xl border-t border-[var(--border-primary)] safe-area-bottom">
+        <nav className="flex items-center justify-around h-[56px] px-1 sm:px-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;

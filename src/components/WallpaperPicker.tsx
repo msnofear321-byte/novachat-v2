@@ -23,7 +23,7 @@ export default function WallpaperPicker({ isOpen, onClose }: WallpaperPickerProp
             <HiOutlineXMark className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-4 grid grid-cols-4 gap-3 max-h-[400px] overflow-y-auto custom-scrollbar">
+        <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto custom-scrollbar">
           {WALLPAPERS.map((wp) => (
             <button key={wp.id} onClick={() => { setWallpaper(wp); onClose(); }}
               className={`relative aspect-[3/4] rounded-[14px] overflow-hidden border-2 transition-all ${

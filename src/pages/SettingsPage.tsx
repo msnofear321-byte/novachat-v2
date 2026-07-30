@@ -161,10 +161,10 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)]">
-      <div className="max-w-[600px] mx-auto px-6 py-8">
+    <div className="min-h-[100dvh] bg-[var(--bg-primary)]">
+      <div className="max-w-[600px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-8">
+        <div className="flex items-center gap-3 mb-6 sm:mb-8">
           <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-[12px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] transition-all">
             <HiOutlineArrowLeft className="w-5 h-5" />
           </button>
@@ -277,7 +277,7 @@ export default function SettingsPage() {
                   <p className="text-[var(--text-muted)] text-[12px]">{currentTheme?.label || 'Dark'}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {THEMES.map((t) => (
                   <motion.button key={t.id} whileTap={{ scale: 0.95 }} onClick={() => setTheme(t.id)}
                     className={`relative flex flex-col items-center gap-2 px-3 py-3 rounded-[12px] border-2 transition-all ${

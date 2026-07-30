@@ -247,7 +247,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex relative overflow-hidden" style={{ background: '#050505' }}>
+    <div className="min-h-[100dvh] w-full flex relative overflow-hidden" style={{ background: '#050505' }}>
       {/* Animated background blobs */}
       <div className="absolute inset-0 pointer-events-none">
         <motion.div
@@ -470,7 +470,7 @@ export default function AuthPage() {
       </div>
 
       {/* Right Panel (Form) */}
-      <div className="w-full lg:w-[50%] xl:w-[45%] flex items-center justify-center p-6 sm:p-8 relative">
+      <div className="w-full lg:w-[50%] xl:w-[45%] flex items-center justify-center p-4 sm:p-8 relative">
         <div className="absolute inset-0 bg-gradient-to-l from-transparent via-[#050505]/50 to-[#050505]" />
 
         <div className="w-full max-w-[420px] relative z-10">
@@ -479,12 +479,12 @@ export default function AuthPage() {
             initial={{ scale: 0.6, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="lg:hidden text-center mb-8"
+            className="lg:hidden text-center mb-6 sm:mb-8"
           >
-            <div className="inline-flex items-center justify-center mb-4">
-              <NovaLogo size={64} />
+            <div className="inline-flex items-center justify-center mb-3 sm:mb-4">
+              <NovaLogo size={52} />
             </div>
-            <h2 className="text-[28px] font-bold text-white tracking-tight">
+            <h2 className="text-[24px] sm:text-[28px] font-bold text-white tracking-tight">
               Nova<span className="text-purple-400">Chat</span>
             </h2>
           </motion.div>
@@ -494,7 +494,7 @@ export default function AuthPage() {
             initial={{ opacity: 0, y: 24, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
-            className="neon-glass rounded-[28px] p-8 relative overflow-hidden"
+            className="neon-glass rounded-[28px] p-6 sm:p-8 relative overflow-hidden"
           >
             <div className="absolute top-0 left-[15%] right-[15%] h-[1px] bg-gradient-to-r from-transparent via-purple-400/30 to-transparent" />
             <motion.div

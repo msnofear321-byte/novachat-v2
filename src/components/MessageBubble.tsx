@@ -93,8 +93,8 @@ export default function MessageBubble({
   if (message.deleted || message.deletedForEveryone) {
     return (
       <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
-        className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-4 mb-1`}>
-        <div className="px-4 py-2.5 bg-[var(--bg-input)] rounded-[18px] border border-[var(--border-primary)]">
+        className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-2 sm:px-4 mb-1`}>
+        <div className="px-4 py-2.5 bg-[var(--bg-input)] rounded-[16px] sm:rounded-[18px] border border-[var(--border-primary)] max-w-[85%] sm:max-w-[70%]">
           <p className="text-[13px] italic text-[var(--text-muted)]">
             {message.deletedForEveryone
               ? (message.senderId === user?.uid ? 'You deleted this message.' : 'This message was deleted.')
@@ -120,7 +120,7 @@ export default function MessageBubble({
     if (message.type === 'image' && message.mediaURL) {
       return (
         <div className="overflow-hidden">
-          <img src={message.mediaURL} alt="image" className="w-full max-w-[280px] max-h-[260px] object-cover hover:scale-[1.02] transition-transform duration-300" />
+          <img src={message.mediaURL} alt="image" className="w-full max-w-[240px] sm:max-w-[280px] max-h-[200px] sm:max-h-[260px] object-cover hover:scale-[1.02] transition-transform duration-300" />
         </div>
       );
     }
@@ -128,14 +128,14 @@ export default function MessageBubble({
     if (message.type === 'video' && message.mediaURL) {
       return (
         <div className="overflow-hidden">
-          <video src={message.mediaURL} controls preload="metadata" className="w-full max-w-[280px] max-h-[260px]" />
+          <video src={message.mediaURL} controls preload="metadata" className="w-full max-w-[240px] sm:max-w-[280px] max-h-[200px] sm:max-h-[260px]" />
         </div>
       );
     }
 
     if (message.type === 'voice' && message.mediaURL) {
       return (
-        <div className="px-3 py-2.5">
+        <div className="px-2 sm:px-3 py-2 sm:py-2.5">
           <VoiceMessage url={message.mediaURL} isOwn={isOwn} duration={message.duration} />
         </div>
       );
@@ -144,7 +144,7 @@ export default function MessageBubble({
     if (message.type === 'gif' && message.mediaURL) {
       return (
         <div className="overflow-hidden">
-          <img src={message.mediaURL} alt="gif" className="w-full max-w-[240px] max-h-[200px] object-cover" />
+          <img src={message.mediaURL} alt="gif" className="w-full max-w-[200px] sm:max-w-[240px] max-h-[160px] sm:max-h-[200px] object-cover" />
         </div>
       );
     }
@@ -155,7 +155,7 @@ export default function MessageBubble({
       const isVideo = message.mimeType?.startsWith('video/');
 
       return (
-        <div className="max-w-[280px]">
+        <div className="max-w-[240px] sm:max-w-[280px]">
           {isPDF && (
             <iframe
               src={message.mediaURL}
@@ -169,11 +169,11 @@ export default function MessageBubble({
             </div>
           )}
           {isVideo && (
-            <video src={message.mediaURL} controls preload="metadata" className="w-full max-w-[280px] max-h-[220px]" />
+            <video src={message.mediaURL} controls preload="metadata" className="w-full max-w-[240px] sm:max-w-[280px] max-h-[180px] sm:max-h-[220px]" />
           )}
           <a href={message.mediaURL} download={message.fileName} target="_blank" rel="noopener noreferrer"
-            className={`flex items-center gap-3 px-4 py-3 ${isOwn ? 'text-white' : 'text-[var(--text-primary)]'} ${isPDF ? 'border-t border-white/10' : ''} hover:bg-white/5 transition-all`}>
-            <div className={`w-10 h-10 rounded-[12px] flex items-center justify-center flex-shrink-0 ${isOwn ? 'bg-white/15' : 'bg-[var(--accent-glow)]'}`}>
+            className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 ${isOwn ? 'text-white' : 'text-[var(--text-primary)]'} ${isPDF ? 'border-t border-white/10' : ''} hover:bg-white/5 transition-all`}>
+            <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-[10px] sm:rounded-[12px] flex items-center justify-center flex-shrink-0 ${isOwn ? 'bg-white/15' : 'bg-[var(--accent-glow)]'}`}>
               {isPDF ? (
                 <svg className={`w-5 h-5 ${isOwn ? 'text-white' : 'text-red-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
@@ -204,15 +204,17 @@ export default function MessageBubble({
     return null;
   }
 
+  const isTouchDevice = typeof window !== 'undefined' && 'ontouchstart' in window;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 6, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-      className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-4 mb-1 group`}
+      className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-2 sm:px-4 mb-1 group`}
       data-message-id={message.id}
     >
-      <div className={`relative max-w-[70%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}>
+      <div className={`relative max-w-[85%] sm:max-w-[75%] md:max-w-[70%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}>
         {showSender && !isOwn && (
           <span className="text-[11px] font-semibold text-[var(--accent-primary)] mb-1 ml-1">{senderName}</span>
         )}
@@ -280,7 +282,7 @@ export default function MessageBubble({
 
         {/* Delete options popover */}
         {showDeleteOptions && (
-          <div ref={deleteRef} className="absolute top-full mt-1 left-0 right-0 z-30 glass-premium rounded-[14px] shadow-[var(--shadow-xl)] overflow-hidden">
+          <div ref={deleteRef} className="absolute top-full mt-1 left-0 right-0 z-30 glass-premium rounded-[12px] sm:rounded-[14px] shadow-[var(--shadow-xl)] overflow-hidden">
             <button onClick={() => { onDelete(message); setShowDeleteOptions(false); }}
               className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--hover-bg)] transition-all text-left">
               <HiOutlineTrash className="w-4 h-4 text-[var(--text-secondary)]" />
@@ -297,8 +299,8 @@ export default function MessageBubble({
         )}
 
         {/* Action buttons */}
-        <div ref={actionsRef} className={`absolute top-1/2 -translate-y-1/2 ${isOwn ? '-left-2 -translate-x-full' : '-right-2 translate-x-0'} opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-20`}>
-          <div className="flex items-center gap-0.5 glass-premium rounded-[12px] p-0.5 shadow-[var(--shadow-lg)]">
+        <div ref={actionsRef} className={`${isTouchDevice ? 'message-actions' : 'absolute top-1/2 -translate-y-1/2 ' + (isOwn ? '-left-2 -translate-x-full' : '-right-2 translate-x-0') + ' opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-20'}`}>
+          <div className="flex items-center gap-0.5 glass-premium rounded-[10px] sm:rounded-[12px] p-0.5 shadow-[var(--shadow-lg)]">
             {[
               { icon: HiOutlineStar, title: 'Star', action: () => onStar(message), filled: message.starred },
               { icon: HiOutlineChatBubbleLeftRight, title: 'Reply', action: () => onReply(message) },

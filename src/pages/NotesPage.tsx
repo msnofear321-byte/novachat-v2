@@ -210,7 +210,7 @@ export default function NotesPage() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-[var(--bg-primary)]">
+    <div className="min-h-[100dvh] flex flex-col bg-[var(--bg-primary)]">
       <div className="px-4 py-3 border-b border-[var(--border-primary)] bg-[var(--bg-card)]/80 backdrop-blur-xl">
         <div className="flex items-center gap-3 mb-3">
           <motion.button whileTap={{ scale: 0.9 }} onClick={() => navigate('/')}

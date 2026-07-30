@@ -19,7 +19,7 @@ export default function ReplyPreview({ replyTo, onCancel, otherUserName }: Reply
   const isOwn = replyTo.senderId === user?.uid;
   return (
     <motion.div initial={{ opacity: 0, y: 8, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, y: 8, height: 0 }}
-      className="mx-4 mb-2 px-4 py-3 bg-[var(--accent-primary)]/8 border border-[var(--accent-primary)]/15 rounded-[14px] flex items-center gap-3">
+      className="mx-3 sm:mx-4 mb-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-[var(--accent-primary)]/8 border border-[var(--accent-primary)]/15 rounded-[12px] sm:rounded-[14px] flex items-center gap-2 sm:gap-3">
       <div className="w-0.5 h-8 bg-[var(--accent-primary)] rounded-full flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-[12px] font-semibold text-[var(--accent-primary)]">
