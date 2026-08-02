@@ -23,22 +23,5 @@ export default defineConfig({
       'react/jsx-dev-runtime': resolve(reactPath, 'jsx-dev-runtime.js'),
     },
   },
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks(id: string) {
-          if (id.includes('node_modules')) {
-            if (id.includes('framer-motion')) return 'vendor-framer';
-            if (id.includes('react-icons')) return 'vendor-icons';
-            if (id.includes('react-router')) return 'vendor-router';
-            if (id.includes('firebase')) return 'vendor-firebase';
-            if (id.includes('@react-three') || id.includes('/three/') || id.includes('three/examples') || id.includes('three/src')) return 'vendor-three';
-            if (id.includes('/react/') || id.includes('scheduler')) return 'vendor-react';
-            return 'vendor';
-          }
-          return undefined;
-        },
-      },
-    },
-  },
+  build: {}, 
 })
