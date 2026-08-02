@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, memo, type KeyboardEvent } from 'react';
 import { motion } from 'framer-motion';
 import { HiOutlineStar, HiOutlineArrowUturnRight, HiOutlinePencilSquare, HiOutlineTrash, HiOutlineChatBubbleLeftRight, HiOutlineDocumentDuplicate } from 'react-icons/hi2';
 import { HiStar } from 'react-icons/hi';
@@ -22,7 +22,7 @@ interface MessageBubbleProps {
   onScrollToMessage?: (messageId: string) => void;
 }
 
-export default function MessageBubble({
+function MessageBubble({
   message, isOwn, showSender, senderName,
   onReply, onForward, onStar, onDelete, onDeleteForEveryone, onEdit, onCopy, onScrollToMessage,
 }: MessageBubbleProps) {
@@ -120,7 +120,7 @@ export default function MessageBubble({
     if (message.type === 'image' && message.mediaURL) {
       return (
         <div className="overflow-hidden">
-          <img src={message.mediaURL} alt="image" className="w-full max-w-[240px] sm:max-w-[280px] max-h-[200px] sm:max-h-[260px] object-cover hover:scale-[1.02] transition-transform duration-300" />
+          <img src={message.mediaURL} alt="image" loading="lazy" decoding="async" className="w-full max-w-[240px] sm:max-w-[280px] max-h-[200px] sm:max-h-[260px] object-cover hover:scale-[1.02] transition-transform duration-300" />
         </div>
       );
     }
@@ -144,7 +144,7 @@ export default function MessageBubble({
     if (message.type === 'gif' && message.mediaURL) {
       return (
         <div className="overflow-hidden">
-          <img src={message.mediaURL} alt="gif" className="w-full max-w-[200px] sm:max-w-[240px] max-h-[160px] sm:max-h-[200px] object-cover" />
+          <img src={message.mediaURL} alt="gif" loading="lazy" decoding="async" className="w-full max-w-[200px] sm:max-w-[240px] max-h-[160px] sm:max-h-[200px] object-cover" />
         </div>
       );
     }
@@ -159,6 +159,7 @@ export default function MessageBubble({
           {isPDF && (
             <iframe
               src={message.mediaURL}
+              loading="lazy"
               className="w-full h-[200px] border-0"
               title={message.fileName || 'PDF preview'}
             />
@@ -336,3 +337,5 @@ export default function MessageBubble({
     </motion.div>
   );
 }
+
+export default memo(MessageBubble);

@@ -6,6 +6,7 @@ import {
   signOut,
   updateProfile,
   deleteUser,
+  fetchSignInMethodsForEmail,
   type UserCredential,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -33,12 +34,53 @@ function getLoginErrorMessage(code: string): string {
 }
 
 export async function loginWithEmail(email: string, password: string): Promise<UserCredential> {
+  let result: UserCredential;
   try {
-    return await signInWithEmailAndPassword(auth, email, password);
+    result = await signInWithEmailAndPassword(auth, email, password);
   } catch (err: unknown) {
     const code = (err as { code?: string }).code || '';
+    if (code === 'auth/invalid-credential') {
+      try {
+        const methods = await fetchSignInMethodsForEmail(auth, email.trim());
+        if (methods.length === 0) throw new Error('NO_ACCOUNT');
+        if (methods.some((m) => m !== 'password')) throw new Error('WRONG_PROVIDER');
+        throw new Error('WRONG_PASSWORD');
+      } catch (inner: unknown) {
+        const precise: Record<string, string> = {
+          NO_ACCOUNT: 'No account found with this email. Please sign up first.',
+          WRONG_PROVIDER: 'This email is linked to Google sign-in. Please use the Google button instead.',
+          WRONG_PASSWORD: 'Incorrect password. Please try again or reset your password.',
+        };
+        const marker = inner instanceof Error ? inner.message : '';
+        if (precise[marker]) {
+          throw new Error(precise[marker]);
+        }
+        throw new Error(getLoginErrorMessage(code));
+      }
+    }
     throw new Error(getLoginErrorMessage(code));
   }
+
+  // Ensure a Firestore profile exists for this account (legacy accounts
+  // created before the profile write may be missing one).
+  try {
+    const snap = await getDoc(doc(db, 'users', result.user.uid));
+    if (!snap.exists()) {
+      await setDoc(doc(db, 'users', result.user.uid), {
+        uid: result.user.uid,
+        displayName: result.user.displayName || result.user.email?.split('@')[0] || 'User',
+        email: result.user.email,
+        photoURL: result.user.photoURL || '',
+        status: 'online',
+        lastSeen: Date.now(),
+        createdAt: Date.now(),
+      });
+    }
+  } catch {
+    // Non-critical: login still succeeds even if profile sync fails.
+  }
+
+  return result;
 }
 
 export async function loginWithGoogle(): Promise<UserCredential> {

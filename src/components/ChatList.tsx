@@ -1,8 +1,7 @@
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
-import { subscribeToConversations, togglePinConversation, deleteConversation, getUserById } from '@/services/firestore';
-import { subscribeToTypingStatus } from '@/services/firestore';
+import { subscribeToConversations, subscribeToUserPresence, subscribeToTypingStatus } from '@/services/firestore';
 import { useAuth } from '@/context/AuthContext';
 import ChatItem from '@/components/ChatItem';
 import type { Conversation, User } from '@/types';
@@ -22,29 +21,54 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [userMap, setUserMap] = useState<Record<string, User>>({});
   const [typingMap, setTypingMap] = useState<Record<string, boolean>>({});
-  const userMapRef = useRef<Record<string, User>>({});
+  const userSubsRef = useRef<Record<string, () => void>>({});
 
   useEffect(() => {
     const unsub = subscribeToConversations((convs) => {
       setConversations(convs);
-
       const totalUnread = convs.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
       onTotalUnreadChange?.(totalUnread);
-
-      convs.forEach((c) => {
-        const otherId = c.participants.find((p) => p !== currentUser?.uid);
-        if (otherId && !userMapRef.current[otherId]) {
-          getUserById(otherId).then((u) => {
-            if (u) {
-              userMapRef.current = { ...userMapRef.current, [u.uid]: u };
-              setUserMap((prev) => ({ ...prev, [u.uid]: u }));
-            }
-          });
-        }
-      });
     });
     return unsub;
   }, [currentUser?.uid, refreshKey, onTotalUnreadChange]);
+
+  useEffect(() => {
+    const subs = userSubsRef.current;
+    const watchedIds = new Set<string>();
+
+    conversations.forEach((c) => {
+      const otherId = c.participants.find((p) => p !== currentUser?.uid);
+      if (!otherId) return;
+
+      watchedIds.add(otherId);
+      if (!subs[otherId]) {
+        subs[otherId] = subscribeToUserPresence(otherId, (u) => {
+          if (!u) return;
+          setUserMap((prev) => {
+            const prevUser = prev[u.uid];
+            if (!prevUser || prevUser.status !== u.status || prevUser.lastSeen !== u.lastSeen) {
+              return { ...prev, [u.uid]: u };
+            }
+            return prev;
+          });
+        });
+      }
+    });
+
+    Object.keys(subs).forEach((id) => {
+      if (!watchedIds.has(id)) {
+        subs[id]();
+        delete subs[id];
+      }
+    });
+  }, [conversations, currentUser?.uid]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(userSubsRef.current).forEach((u) => u());
+      userSubsRef.current = {};
+    };
+  }, []);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -57,6 +81,10 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
     });
     return () => unsubs.forEach((u) => u());
   }, [currentUser, conversations]);
+
+  const handleSelect = useCallback((id: string) => {
+    navigate(`/?c=${id}`);
+  }, [navigate]);
 
   const pinned = conversations.filter((c) => c.pinned);
   const unpinned = conversations.filter((c) => !c.pinned);
@@ -72,6 +100,20 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
 
   const filteredPinned = filter(pinned);
   const filteredUnpinned = filter(unpinned);
+
+  const renderItem = (c: Conversation) => {
+    const otherId = c.participants.find((p) => p !== currentUser?.uid);
+    return (
+      <ChatItem
+        key={c.id}
+        conversation={c}
+        otherUser={otherId ? userMap[otherId] : undefined}
+        isActive={c.id === activeConversationId}
+        onSelect={handleSelect}
+        isTyping={typingMap[c.id]}
+      />
+    );
+  };
 
   if (conversations.length === 0 && !searchQuery.trim()) {
     return (
@@ -111,21 +153,7 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
           <div className="px-5 py-2.5 flex items-center gap-2">
             <span className="section-label">Pinned</span>
           </div>
-          {filteredPinned.map((c) => {
-            const otherId = c.participants.find((p) => p !== currentUser?.uid);
-            return (
-              <ChatItem
-                key={c.id}
-                conversation={c}
-                otherUser={otherId ? userMap[otherId] : undefined}
-                isActive={c.id === activeConversationId}
-                onClick={() => navigate(`/?c=${c.id}`)}
-                onPin={() => togglePinConversation(c.id, false)}
-                onDelete={() => deleteConversation(c.id)}
-                isTyping={typingMap[c.id]}
-              />
-            );
-          })}
+          {filteredPinned.map(renderItem)}
         </div>
       )}
       {filteredUnpinned.length > 0 && (
@@ -135,21 +163,7 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
               <span className="section-label">Recent</span>
             </div>
           )}
-          {filteredUnpinned.map((c) => {
-            const otherId = c.participants.find((p) => p !== currentUser?.uid);
-            return (
-              <ChatItem
-                key={c.id}
-                conversation={c}
-                otherUser={otherId ? userMap[otherId] : undefined}
-                isActive={c.id === activeConversationId}
-                onClick={() => navigate(`/?c=${c.id}`)}
-                onPin={() => togglePinConversation(c.id, true)}
-                onDelete={() => deleteConversation(c.id)}
-                isTyping={typingMap[c.id]}
-              />
-            );
-          })}
+          {filteredUnpinned.map(renderItem)}
         </div>
       )}
     </div>

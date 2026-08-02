@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 
 interface UserAvatarProps {
@@ -20,12 +21,12 @@ const dotSizes = {
   lg: 'w-3.5 h-3.5 right-0.5 bottom-0.5 border-2',
 };
 
-export default function UserAvatar({ photoURL, displayName, size = 'md', online, className = '' }: UserAvatarProps) {
+function UserAvatar({ photoURL, displayName, size = 'md', online, className = '' }: UserAvatarProps) {
   const initials = displayName?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || '?';
   return (
     <div className={`relative flex-shrink-0 ${className}`}>
       {photoURL ? (
-        <img src={photoURL} alt={displayName} className={`${sizes[size]} rounded-full object-cover ring-2 ring-[var(--border-primary)]`} />
+        <img src={photoURL} alt={displayName} loading="lazy" decoding="async" className={`${sizes[size]} rounded-full object-cover ring-2 ring-[var(--border-primary)]`} />
       ) : (
         <div className={`${sizes[size]} rounded-full bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-gradient-end)] flex items-center justify-center text-white font-semibold ring-2 ring-[var(--border-primary)]`}>
           {initials}
@@ -41,3 +42,5 @@ export default function UserAvatar({ photoURL, displayName, size = 'md', online,
     </div>
   );
 }
+
+export default memo(UserAvatar);

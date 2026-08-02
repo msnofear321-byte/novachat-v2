@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { auth, db } from '@/services/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { destroyPresence, initPresence } from '@/services/presence';
 import type { User } from '@/types';
 
 interface AuthContextType {
@@ -22,16 +23,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let unsubscribeProfile: (() => void) | undefined;
+
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
 
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+        unsubscribeProfile = undefined;
+      }
+
       if (!user) {
+        destroyPresence();
         setUserProfile(null);
         setLoading(false);
         return;
       }
 
-      const unsubscribeProfile = onSnapshot(
+      initPresence(user.uid);
+
+      unsubscribeProfile = onSnapshot(
         doc(db, 'users', user.uid),
         (snap) => {
           if (snap.exists()) {
@@ -45,15 +56,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false);
         },
       );
-
-      return () => unsubscribeProfile();
     });
 
-    return () => unsubscribeAuth();
+    return () => {
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+      }
+      unsubscribeAuth();
+    };
   }, []);
 
+  const value = useMemo(
+    () => ({ currentUser, userProfile, loading }),
+    [currentUser, userProfile, loading],
+  );
+
   return (
-    <AuthContext.Provider value={{ currentUser, userProfile, loading }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

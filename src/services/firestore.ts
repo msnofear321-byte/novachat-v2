@@ -142,19 +142,26 @@ export function subscribeToConversations(
     const q = query(
       collection(db, 'conversations'),
       where('participants', 'array-contains', uid),
-      orderBy('lastMessageTime', 'desc'),
     );
 
     return onSnapshot(
       q,
       (snapshot) => {
         retryCount = 0;
-        const conversations = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        })) as Conversation[];
-        setCachedConversations(uid, conversations);
-        callback(conversations);
+        const conversations = snapshot.docs
+          .map((d) => ({
+            id: d.id,
+            ...d.data(),
+          })) as Conversation[];
+
+        const sorted = [...conversations].sort((a, b) => {
+          const aTime = typeof a.lastMessageTime === 'number' ? a.lastMessageTime : 0;
+          const bTime = typeof b.lastMessageTime === 'number' ? b.lastMessageTime : 0;
+          return bTime - aTime;
+        });
+
+        setCachedConversations(uid, sorted);
+        callback(sorted);
       },
       (error) => {
         console.error('subscribeToConversations error:', error);
@@ -220,7 +227,7 @@ export async function sendMessage(
       lastMessage: message.type === 'text' ? message.text : `📎 ${message.type}`,
       lastMessageTime: message.createdAt,
       lastMessageSenderId: message.senderId,
-      unreadCount: increment(1),
+      unreadCount: 0,
     });
   } catch (err) {
     console.warn('Failed to update conversation metadata (message still saved):', err);

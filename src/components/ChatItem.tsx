@@ -1,4 +1,4 @@
-import { formatLastSeen } from '@/utils/format';
+import { memo } from 'react';
 import UserAvatar from '@/components/UserAvatar';
 import type { Conversation, User } from '@/types';
 import { motion } from 'framer-motion';
@@ -8,9 +8,7 @@ interface ChatItemProps {
   conversation: Conversation;
   otherUser: User | undefined;
   isActive: boolean;
-  onClick: () => void;
-  onPin: () => void;
-  onDelete: () => void;
+  onSelect: (conversationId: string) => void;
   isTyping?: boolean;
 }
 
@@ -32,15 +30,14 @@ function formatChatTime(timestamp: number): string {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-export default function ChatItem({ conversation, otherUser, isActive, onClick, onPin: _onPin, onDelete: _onDelete, isTyping }: ChatItemProps) {
-  void formatLastSeen;
+function ChatItem({ conversation, otherUser, isActive, onSelect, isTyping }: ChatItemProps) {
   const isOnline = otherUser?.status === 'online';
   const lastMsg = conversation.lastMessage || 'No messages yet';
 
   return (
     <motion.div
       whileTap={{ scale: 0.98 }}
-      onClick={onClick}
+      onClick={() => onSelect(conversation.id)}
       className={`group relative flex items-center gap-2.5 sm:gap-3.5 px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer transition-all duration-200 border-b border-[var(--border-secondary)] ${
         isActive
           ? 'bg-[var(--accent-primary)]/8 border-l-2 border-l-[var(--accent-primary)]'
@@ -103,3 +100,5 @@ export default function ChatItem({ conversation, otherUser, isActive, onClick, o
     </motion.div>
   );
 }
+
+export default memo(ChatItem);

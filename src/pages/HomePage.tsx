@@ -6,11 +6,12 @@ import SearchUsers from '@/components/SearchUsers';
 import ChatList from '@/components/ChatList';
 import ChatPage from '@/components/ChatPage';
 import MobileBottomNav from '@/components/MobileBottomNav';
+import MobileSidebar from '@/components/MobileSidebar';
 import MusicNotesStrip from '@/components/MusicNotesStrip';
 import { useAuth } from '@/context/AuthContext';
 import { getAllUsers, createConversation } from '@/services/firestore';
 import UserAvatar from '@/components/UserAvatar';
-import { HiOutlineMagnifyingGlass, HiOutlineCog6Tooth } from 'react-icons/hi2';
+import { HiOutlineMagnifyingGlass, HiOutlineCog6Tooth, HiOutlineBars3 } from 'react-icons/hi2';
 import { useNavigate } from 'react-router';
 import type { User } from '@/types';
 
@@ -41,6 +42,7 @@ export default function HomePage() {
   const [totalUnread, setTotalUnread] = useState(0);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     if (activeConversationId || isMobile) return;
@@ -66,7 +68,7 @@ export default function HomePage() {
   }, [setSearchParams]);
 
   return (
-    <div className="h-[100dvh] md:h-screen flex bg-[var(--bg-primary)] overflow-hidden safe-area-top">
+    <div className="app-shell flex bg-[var(--bg-primary)] overflow-hidden overflow-x-hidden safe-area-top">
       {/* Desktop sidebar navigation */}
       <div className="hidden md:flex">
         <Sidebar
@@ -90,6 +92,14 @@ export default function HomePage() {
           {/* Top row: Avatar + title + settings */}
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <div className="flex items-center gap-2 sm:gap-3">
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setDrawerOpen(true)}
+                aria-label="Open menu"
+                className="md:hidden w-9 h-9 -ml-1 rounded-[10px] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--hover-bg)] transition-all"
+              >
+                <HiOutlineBars3 className="w-[22px] h-[22px]" />
+              </motion.button>
               <button onClick={() => navigate('/profile')} className="relative">
                 <UserAvatar photoURL={user?.photoURL ?? undefined} displayName={user?.displayName || '?'} size="sm" online />
               </button>
@@ -173,7 +183,7 @@ export default function HomePage() {
                   <div className="py-2">
                     {allUsers.map((u) => (
                       <motion.button
-                        key={u.uid}
+                        key={u.uid || `${u.displayName || 'user'}-${u.email || 'no-email'}`}
                         whileHover={{ backgroundColor: 'var(--hover-bg)' }}
                         whileTap={{ scale: 0.98 }}
                         onClick={async () => {
@@ -204,11 +214,20 @@ export default function HomePage() {
 
       <SearchUsers isOpen={searchOpen} onClose={() => setSearchOpen(false)} onConversationCreated={handleConversationCreated} />
 
-      {/* Mobile bottom navigation */}
-      <MobileBottomNav
+      <MobileSidebar
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
         onOpenSearch={() => setSearchOpen(true)}
         totalUnread={totalUnread}
       />
+
+      {/* Mobile bottom navigation (hidden while a conversation is open) */}
+      {!isMobile || !activeConversationId ? (
+        <MobileBottomNav
+          onOpenSearch={() => setSearchOpen(true)}
+          totalUnread={totalUnread}
+        />
+      ) : null}
 
     </div>
   );

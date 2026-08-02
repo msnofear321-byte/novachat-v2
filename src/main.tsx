@@ -19,21 +19,18 @@ if (!root) {
 }
 
 function registerAutoRefresh() {
-  const buildId = import.meta.env.VITE_BUILD_ID || `${Date.now()}`;
+  const buildId = import.meta.env.VITE_BUILD_ID || 'novachat-stable';
   const lastKnown = sessionStorage.getItem('app-build-id');
 
-  if (lastKnown && lastKnown !== buildId) {
-    window.location.reload();
+  if (!lastKnown) {
+    sessionStorage.setItem('app-build-id', buildId);
+    return;
   }
 
-  sessionStorage.setItem('app-build-id', buildId);
-
-  window.addEventListener('focus', () => {
-    const currentBuild = sessionStorage.getItem('app-build-id');
-    if (currentBuild && currentBuild !== buildId) {
-      window.location.reload();
-    }
-  });
+  if (lastKnown !== buildId) {
+    sessionStorage.setItem('app-build-id', buildId);
+    return;
+  }
 }
 
 registerAutoRefresh();

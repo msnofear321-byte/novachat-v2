@@ -8,6 +8,7 @@ export function useViewportHeight() {
       const vh = window.visualViewport?.height || window.innerHeight;
       document.documentElement.style.setProperty('--vh', `${vh * 0.01}px`);
       document.documentElement.style.setProperty('--dvh', `${vh}px`);
+      document.documentElement.style.setProperty('--app-height', `${vh}px`);
     }
 
     const onResize = () => {

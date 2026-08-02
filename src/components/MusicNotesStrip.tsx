@@ -79,7 +79,7 @@ export default function MusicNotesStrip() {
           {/* Other users */}
           {otherNotes.map((note) => (
             <motion.button
-              key={note.userId}
+              key={`${note.userId}-${note.songName}-${note.artist}`}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setPlayingNote(note)}

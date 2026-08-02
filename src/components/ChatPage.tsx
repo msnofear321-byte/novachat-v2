@@ -21,8 +21,8 @@ import {
   unblockUser,
   subscribeToBlockedStatus,
 } from '@/services/firestore';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
-import { db } from '@/services/firebase';
+import { doc, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore';
+import { auth, db } from '@/services/firebase';
 import { uploadToCloudinary, getFileType, getMediaDownloadURL } from '@/services/cloudinary';
 import { showBrowserNotification } from '@/services/notifications';
 import MessageBubble from '@/components/MessageBubble';
@@ -32,7 +32,7 @@ import ReplyPreview from '@/components/ReplyPreview';
 import ForwardModal from '@/components/ForwardModal';
 import MessageSkeleton from '@/components/MessageSkeleton';
 import ChatMenu from '@/components/ChatMenu';
-import { formatDateSeparator } from '@/utils/format';
+import { formatDateSeparator, formatLastSeen, toMillis } from '@/utils/format';
 import type { Conversation, Message, User } from '@/types';
 
 interface ChatPageProps {
@@ -44,18 +44,20 @@ interface ChatPageProps {
 
 function mergeMessages(serverMessages: Message[], pendingMessages: Message[]) {
   const merged = [...serverMessages];
+  const serverKeys = new Set(
+    serverMessages.map((server) => {
+      const keyText = server.text || server.mediaURL || '';
+      return `${server.senderId}:${server.receiverId}:${server.createdAt}:${server.type}:${keyText}`;
+    }),
+  );
 
   pendingMessages.forEach((pending) => {
-    const alreadyExists = serverMessages.some((server) => (
-      server.senderId === pending.senderId &&
-      server.receiverId === pending.receiverId &&
-      server.type === pending.type &&
-      server.text === pending.text &&
-      server.createdAt === pending.createdAt
-    ));
+    const keyText = pending.text || pending.mediaURL || '';
+    const key = `${pending.senderId}:${pending.receiverId}:${pending.createdAt}:${pending.type}:${keyText}`;
 
-    if (!alreadyExists) {
+    if (!serverKeys.has(key)) {
       merged.push(pending);
+      serverKeys.add(key);
     }
   });
 
@@ -85,6 +87,21 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const prevMsgCountRef = useRef(0);
   const deliveredRef = useRef(false);
+  const readSyncRef = useRef(false);
+  const otherUserRef = useRef<User | undefined>(undefined);
+  otherUserRef.current = otherUser;
+
+  const [clock, setClock] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setClock(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  const lastSeenText = useMemo(
+    () => (otherUser && otherUser.status !== 'online' ? formatLastSeen(toMillis(otherUser.lastSeen)) : ''),
+    [otherUser, clock],
+  );
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     if (!messagesEndRef.current) return;
@@ -104,6 +121,7 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
 
   useEffect(() => {
     deliveredRef.current = false;
+    readSyncRef.current = false;
     setPendingMessages([]);
     setLoading(true);
     prevMsgCountRef.current = 0;
@@ -114,18 +132,25 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
         setLoading(false);
 
         if (user) {
-          markMessagesAsRead(conversationId);
+          const currentUid = user.uid || auth.currentUser?.uid;
+          if (!readSyncRef.current) {
+            readSyncRef.current = true;
+            markMessagesAsRead(conversationId).catch(() => {});
+          }
 
           if (!deliveredRef.current) {
             deliveredRef.current = true;
-            markMessagesAsDelivered(conversationId);
+            markMessagesAsDelivered(conversationId).catch(() => {});
           }
 
-          msgs.forEach((msg) => {
-            if (msg.senderId !== user.uid && !msg.delivered) {
-              updateDoc(doc(db, 'messages', conversationId, 'messages', msg.id), { delivered: true }).catch(() => {});
-            }
-          });
+          const undeliveredIncoming = msgs.filter((msg) => msg.senderId !== currentUid && !msg.delivered);
+          if (undeliveredIncoming.length > 0) {
+            const batch = writeBatch(db);
+            undeliveredIncoming.forEach((msg) => {
+              batch.update(doc(db, 'messages', conversationId, 'messages', msg.id), { delivered: true });
+            });
+            batch.commit().catch(() => {});
+          }
         }
 
         const newCount = msgs.length;
@@ -133,7 +158,7 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
           const lastMsg = msgs[msgs.length - 1];
           if (lastMsg && lastMsg.senderId !== user?.uid) {
             showBrowserNotification(
-              otherUser?.displayName || 'New Message',
+              otherUserRef.current?.displayName || 'New Message',
               lastMsg.type === 'text' ? lastMsg.text : `Sent a ${lastMsg.type}`,
             );
           }
@@ -146,7 +171,7 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
       },
     );
     return unsub;
-  }, [conversationId, user, otherUser?.displayName]);
+  }, [conversationId, user]);
 
   useEffect(() => {
     const parts = conversationId.split('_');
@@ -192,18 +217,18 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
     return () => clearTimeout(timeout);
   }, [visibleMessages.length, scrollToBottom]);
 
-  function handleTyping(active: boolean) {
+  const handleTyping = useCallback((active: boolean) => {
     if (!user) return;
     setTypingStatus(user.uid, conversationId, active);
     clearTimeout(typingTimeoutRef.current);
     if (active) {
       typingTimeoutRef.current = setTimeout(() => setTypingStatus(user.uid, conversationId, false), 5000);
     }
-  }
+  }, [user, conversationId]);
 
   const otherId = conversationId.split('_').find((id) => id !== user?.uid) || '';
 
-  async function handleSend(text: string) {
+  const handleSend = useCallback(async (text: string) => {
     if (!user) return;
     const createdAt = Date.now();
     const optimisticMessage: Message = {
@@ -253,9 +278,9 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
       setSendError(error instanceof Error ? error.message : 'Failed to send message.');
       setTimeout(() => setSendError(null), 8000);
     }
-  }
+  }, [user, conversationId, otherId, replyTo, scrollToBottom]);
 
-  async function handleFileSelect(file: File) {
+  const handleFileSelect = useCallback(async (file: File) => {
     if (!user) return;
     setUploadProgress(0);
     setSendError(null);
@@ -281,9 +306,9 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
     } finally {
       setUploadProgress(null);
     }
-  }
+  }, [user, conversationId, otherId, scrollToBottom]);
 
-  async function handleVoiceRecorded(blob: Blob, duration: number) {
+  const handleVoiceRecorded = useCallback(async (blob: Blob, duration: number) => {
     if (!user) return;
     setUploadProgress(0);
     setSendError(null);
@@ -303,32 +328,32 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
     } finally {
       setUploadProgress(null);
     }
-  }
+  }, [user, conversationId, otherId, scrollToBottom]);
 
-  async function handleEdit(msg: Message, newText: string) {
+  const handleEdit = useCallback(async (msg: Message, newText: string) => {
     await editMessage(conversationId, msg.id, newText);
-  }
+  }, [conversationId]);
 
-  async function handleStar(msg: Message) {
+  const handleStar = useCallback(async (msg: Message) => {
     await starMessage(conversationId, msg.id, !msg.starred);
-  }
+  }, [conversationId]);
 
-  async function handleDeleteForMe(msg: Message) {
+  const handleDeleteForMe = useCallback(async (msg: Message) => {
     await deleteMessageForMe(conversationId, msg.id);
-  }
+  }, [conversationId]);
 
-  async function handleDeleteForEveryone(msg: Message) {
+  const handleDeleteForEveryone = useCallback(async (msg: Message) => {
     const result = await deleteMessageForEveryone(conversationId, msg.id, msg);
     if (!result.success && result.error) {
       setSendError(result.error);
       setTimeout(() => setSendError(null), 5000);
     }
-  }
+  }, [conversationId]);
 
-  function handleCopy(msg: Message) {
+  const handleCopy = useCallback((msg: Message) => {
     const textToCopy = msg.text || `[${msg.type}]`;
     navigator.clipboard.writeText(textToCopy).catch(() => {});
-  }
+  }, []);
 
   function handleStartCall(type: 'voice' | 'video') {
     if (!user || !otherUser) return;
@@ -377,7 +402,7 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
                         <span className="typing-dots"><span /><span /><span /></span>
                         <span>typing</span>
                       </span>
-                    ) : otherUser.status === 'online' ? 'Online' : `Last seen ${otherUser.lastSeen ? new Date(otherUser.lastSeen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'recently'}`}
+                    ) : otherUser.status === 'online' ? 'Online' : lastSeenText}
                   </p>
                 </div>
               </>
@@ -466,7 +491,8 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
         ) : (
           <>
             {filteredMessages.map((msg, i) => {
-              const isOwn = msg.senderId === user?.uid;
+              const currentUid = user?.uid || auth.currentUser?.uid;
+              const isOwn = msg.senderId === currentUid;
               const prev = filteredMessages[i - 1];
               const showSender = !prev || prev.senderId !== msg.senderId || (msg.createdAt - prev.createdAt > 300000);
 
@@ -486,7 +512,7 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
                   )}
                   <MessageBubble message={msg} isOwn={isOwn} showSender={showSender}
                     senderName={isOwn ? user?.displayName ?? undefined : otherUser?.displayName}
-                    onReply={(m) => setReplyTo(m)} onForward={(m) => setForwardMsg(m)}
+                    onReply={setReplyTo} onForward={setForwardMsg}
                     onStar={handleStar} onDelete={handleDeleteForMe}
                     onDeleteForEveryone={handleDeleteForEveryone}
                     onEdit={handleEdit} onCopy={handleCopy}

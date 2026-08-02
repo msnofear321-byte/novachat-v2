@@ -5,6 +5,7 @@ import {
 import { db } from './firebase';
 
 export interface MusicNote {
+  id?: string;
   userId: string;
   userName: string;
   userPhoto: string;
@@ -24,7 +25,7 @@ export function subscribeMusicNotes(
   );
 
   return onSnapshot(q, (snapshot) => {
-    const notes = snapshot.docs.map((d) => d.data() as MusicNote);
+    const notes = snapshot.docs.map((d) => ({ ...(d.data() as MusicNote), id: d.id }));
     callback(notes);
   });
 }
