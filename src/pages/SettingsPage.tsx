@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  HiOutlineArrowLeft, HiOutlinePhoto, HiOutlineBell,
+  HiOutlinePhoto, HiOutlineBell,
   HiOutlineInformationCircle, HiOutlineSwatch, HiOutlineCommandLine,
   HiOutlineCamera, HiOutlineCheck, HiOutlineArrowRightOnRectangle,
   HiOutlineTrash, HiOutlineUser, HiOutlinePhone, HiOutlineChatBubbleLeftRight,
@@ -161,13 +161,10 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[var(--bg-primary)]">
+    <div className="h-full overflow-y-auto custom-scrollbar bg-[var(--bg-primary)]">
       <div className="max-w-[600px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6 sm:mb-8">
-          <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-[12px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] transition-all">
-            <HiOutlineArrowLeft className="w-5 h-5" />
-          </button>
           <h1 className="text-[22px] font-bold text-[var(--text-primary)]">Settings</h1>
         </div>
 

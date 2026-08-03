@@ -4,6 +4,7 @@ import { HiOutlineMagnifyingGlass, HiOutlineArrowLeft, HiOutlinePhone, HiOutline
 import { HiOutlineBan } from 'react-icons/hi';
 import { useAuth } from '@/context/AuthContext';
 import { useWallpaper } from '@/context/WallpaperContext';
+import { useKeyboard } from '@/context/KeyboardContext';
 import {
   subscribeToMessages,
   sendMessage,
@@ -32,7 +33,8 @@ import ReplyPreview from '@/components/ReplyPreview';
 import ForwardModal from '@/components/ForwardModal';
 import MessageSkeleton from '@/components/MessageSkeleton';
 import ChatMenu from '@/components/ChatMenu';
-import { formatDateSeparator, formatLastSeen, toMillis } from '@/utils/format';
+import { formatDateSeparator, formatLastSeen } from '@/utils/format';
+import { isOnlineNow, getLastSeenMillis } from '@/services/presence';
 import type { Conversation, Message, User } from '@/types';
 
 interface ChatPageProps {
@@ -94,13 +96,14 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
   const [clock, setClock] = useState(() => Date.now());
 
   useEffect(() => {
-    const id = setInterval(() => setClock(Date.now()), 30000);
+    const id = setInterval(() => setClock(Date.now()), 5000);
     return () => clearInterval(id);
   }, []);
 
+  const isOnline = isOnlineNow(otherUser, clock);
   const lastSeenText = useMemo(
-    () => (otherUser && otherUser.status !== 'online' ? formatLastSeen(toMillis(otherUser.lastSeen)) : ''),
-    [otherUser, clock],
+    () => (otherUser && !isOnline ? formatLastSeen(getLastSeenMillis(otherUser)) : ''),
+    [otherUser, isOnline],
   );
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
@@ -109,6 +112,17 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
       messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
     });
   }, []);
+
+  const { keyboardHeight } = useKeyboard();
+  const prevKeyboardRef = useRef(keyboardHeight);
+
+  useEffect(() => {
+    if (prevKeyboardRef.current !== keyboardHeight) {
+      prevKeyboardRef.current = keyboardHeight;
+      const t = setTimeout(() => scrollToBottom('auto'), 220);
+      return () => clearTimeout(t);
+    }
+  }, [keyboardHeight, scrollToBottom]);
 
   const scrollToMessage = useCallback((messageId: string) => {
     const el = containerRef.current?.querySelector(`[data-message-id="${messageId}"]`);
@@ -392,17 +406,17 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
                       {otherUser.displayName?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
                     </div>
                   )}
-                  <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[var(--bg-card)] ${otherUser.status === 'online' ? 'bg-[var(--success)]' : 'bg-[var(--text-muted)]'}`} />
+                  <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[var(--bg-card)] ${isOnline ? 'bg-[var(--success)]' : 'bg-[var(--text-muted)]'}`} />
                 </div>
                 <div className="min-w-0">
                   <h3 className="font-semibold text-[var(--text-primary)] text-[15px] truncate">{otherUser.displayName}</h3>
-                  <p className={`text-[12px] truncate ${typing ? 'text-[var(--accent-primary)]' : otherUser.status === 'online' ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'}`}>
+                  <p className={`text-[12px] truncate ${typing ? 'text-[var(--accent-primary)]' : isOnline ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'}`}>
                     {typing ? (
                       <span className="flex items-center gap-1">
                         <span className="typing-dots"><span /><span /><span /></span>
                         <span>typing</span>
                       </span>
-                    ) : otherUser.status === 'online' ? 'Online' : lastSeenText}
+                    ) : isOnline ? 'Online' : lastSeenText}
                   </p>
                 </div>
               </>
@@ -609,8 +623,8 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
                   </div>
                 )}
                 <h3 className="text-[17px] font-bold text-[var(--text-primary)]">{otherUser.displayName}</h3>
-                <div className={`inline-flex items-center gap-1.5 mt-1 px-3 py-0.5 rounded-full text-[11px] font-medium ${otherUser.status === 'online' ? 'bg-[var(--success)]/10 text-[var(--success)]' : 'bg-[var(--bg-input)] text-[var(--text-muted)]'}`}>
-                  {otherUser.status === 'online' ? (
+                <div className={`inline-flex items-center gap-1.5 mt-1 px-3 py-0.5 rounded-full text-[11px] font-medium ${isOnline ? 'bg-[var(--success)]/10 text-[var(--success)]' : 'bg-[var(--bg-input)] text-[var(--text-muted)]'}`}>
+                  {isOnline ? (
                     <><div className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" /> Online</>
                   ) : (
                     <><div className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" /> Offline</>

@@ -11,6 +11,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from './firebase';
+import { setUserOffline } from './presence';
 
 function getLoginErrorMessage(code: string): string {
   switch (code) {
@@ -62,7 +63,9 @@ export async function loginWithEmail(email: string, password: string): Promise<U
   }
 
   // Ensure a Firestore profile exists for this account (legacy accounts
-  // created before the profile write may be missing one).
+  // created before the profile write may be missing one). Presence fields are
+  // intentionally NOT set here — the presence system marks the user online only
+  // once the app is actually open and visible (see AuthContext.initPresence).
   try {
     const snap = await getDoc(doc(db, 'users', result.user.uid));
     if (!snap.exists()) {
@@ -71,8 +74,6 @@ export async function loginWithEmail(email: string, password: string): Promise<U
         displayName: result.user.displayName || result.user.email?.split('@')[0] || 'User',
         email: result.user.email,
         photoURL: result.user.photoURL || '',
-        status: 'online',
-        lastSeen: Date.now(),
         createdAt: Date.now(),
       });
     }
@@ -94,15 +95,8 @@ export async function loginWithGoogle(): Promise<UserCredential> {
       displayName: user.displayName || 'User',
       email: user.email,
       photoURL: user.photoURL || '',
-      status: 'online',
-      lastSeen: Date.now(),
       createdAt: Date.now(),
     });
-  } else {
-    await setDoc(doc(db, 'users', user.uid), {
-      status: 'online',
-      lastSeen: Date.now(),
-    }, { merge: true });
   }
 
   return result;
@@ -150,8 +144,6 @@ export async function registerWithEmail(
       displayName,
       email,
       photoURL: '',
-      status: 'online',
-      lastSeen: Date.now(),
       createdAt: Date.now(),
     });
   } catch {
@@ -174,10 +166,7 @@ export async function resetPassword(email: string): Promise<void> {
 
 export async function logout(): Promise<void> {
   if (auth.currentUser) {
-    await setDoc(doc(db, 'users', auth.currentUser.uid), {
-      status: 'offline',
-      lastSeen: Date.now(),
-    }, { merge: true });
+    setUserOffline(auth.currentUser.uid);
   }
   return signOut(auth);
 }

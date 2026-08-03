@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlineMagnifyingGlass, HiOutlineArrowLeft, HiOutlineInformationCircle, HiOutlineXMark } from 'react-icons/hi2';
 import { useAuth } from '@/context/AuthContext';
 import { useWallpaper } from '@/context/WallpaperContext';
+import { useKeyboard } from '@/context/KeyboardContext';
 import {
   getGroup,
   subscribeToGroupMessages,
@@ -85,6 +86,17 @@ export default function GroupChatPage({ groupId, onBack }: GroupChatPageProps) {
       messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
     });
   }, []);
+
+  const { keyboardHeight } = useKeyboard();
+  const prevKeyboardRef = useRef(keyboardHeight);
+
+  useEffect(() => {
+    if (prevKeyboardRef.current !== keyboardHeight) {
+      prevKeyboardRef.current = keyboardHeight;
+      const t = setTimeout(() => scrollToBottom('auto'), 220);
+      return () => clearTimeout(t);
+    }
+  }, [keyboardHeight, scrollToBottom]);
 
   useEffect(() => {
     let cancelled = false;

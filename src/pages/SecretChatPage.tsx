@@ -7,6 +7,7 @@ import {
 } from 'react-icons/hi2';
 import { useNavigate } from 'react-router';
 import { useAuth } from '@/context/AuthContext';
+import { useKeyboard } from '@/context/KeyboardContext';
 import { encryptText, decryptText } from '@/services/crypto';
 import {
   doc, setDoc, onSnapshot, collection, addDoc, query, orderBy,
@@ -50,6 +51,20 @@ export default function SecretChatPage() {
 
   const storedPin = getStoredPin();
   const activePin = storedPin || '';
+  const { keyboardHeight } = useKeyboard();
+  const prevKeyboardRef = useRef(keyboardHeight);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
+  }, []);
+
+  useEffect(() => {
+    if (prevKeyboardRef.current !== keyboardHeight) {
+      prevKeyboardRef.current = keyboardHeight;
+      const t = setTimeout(() => scrollToBottom('auto'), 220);
+      return () => clearTimeout(t);
+    }
+  }, [keyboardHeight, scrollToBottom]);
 
   useEffect(() => {
     if (storedPin) {
@@ -58,10 +73,6 @@ export default function SecretChatPage() {
       setSettingPin(true);
       setLocked(true);
     }
-  }, []);
-
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
   useEffect(() => {
@@ -207,7 +218,8 @@ export default function SecretChatPage() {
 
   if (locked) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-[var(--bg-primary)]">
+      <div className="relative h-full overflow-hidden">
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--bg-primary)]">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -257,12 +269,13 @@ export default function SecretChatPage() {
             Back to chat
           </button>
         </motion.div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-[var(--bg-chat)]">
+    <div className="relative h-full flex flex-col bg-[var(--bg-chat)]">
       <div className="h-14 px-4 flex items-center gap-3 border-b border-[var(--border-primary)]" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <button
           onClick={() => navigate('/')}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
 import { subscribeToConversations, subscribeToUserPresence, subscribeToTypingStatus } from '@/services/firestore';
+import { isOnlineNow, presenceMillis, PRESENCE_TICK_MS } from '@/services/presence';
 import { useAuth } from '@/context/AuthContext';
 import ChatItem from '@/components/ChatItem';
 import type { Conversation, User } from '@/types';
@@ -21,6 +22,7 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [userMap, setUserMap] = useState<Record<string, User>>({});
   const [typingMap, setTypingMap] = useState<Record<string, boolean>>({});
+  const [now, setNow] = useState(() => Date.now());
   const userSubsRef = useRef<Record<string, () => void>>({});
 
   useEffect(() => {
@@ -31,6 +33,13 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
     });
     return unsub;
   }, [currentUser?.uid, refreshKey, onTotalUnreadChange]);
+
+  // Re-evaluate effective online state on a short tick so a heartbeat that
+  // went stale (no writes happening) flips the green dot offline within seconds.
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), PRESENCE_TICK_MS);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const subs = userSubsRef.current;
@@ -46,10 +55,13 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
           if (!u) return;
           setUserMap((prev) => {
             const prevUser = prev[u.uid];
-            if (!prevUser || prevUser.status !== u.status || prevUser.lastSeen !== u.lastSeen) {
-              return { ...prev, [u.uid]: u };
-            }
-            return prev;
+            const changed =
+              !prevUser ||
+              prevUser.online !== u.online ||
+              presenceMillis(prevUser.lastSeen) !== presenceMillis(u.lastSeen) ||
+              presenceMillis(prevUser.lastActive) !== presenceMillis(u.lastActive);
+            if (!changed) return prev;
+            return { ...prev, [u.uid]: u };
           });
         });
       }
@@ -103,11 +115,13 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
 
   const renderItem = (c: Conversation) => {
     const otherId = c.participants.find((p) => p !== currentUser?.uid);
+    const otherUser = otherId ? userMap[otherId] : undefined;
     return (
       <ChatItem
         key={c.id}
         conversation={c}
-        otherUser={otherId ? userMap[otherId] : undefined}
+        otherUser={otherUser}
+        online={isOnlineNow(otherUser, now)}
         isActive={c.id === activeConversationId}
         onSelect={handleSelect}
         isTyping={typingMap[c.id]}

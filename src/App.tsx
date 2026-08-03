@@ -2,8 +2,8 @@ import { lazy, Suspense, useCallback } from 'react';
 import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
-import { useViewportHeight } from '@/hooks/useViewportHeight';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import TopNavigation from '@/components/TopNavigation';
 import CallModal from '@/components/CallModal';
 
 const AuthPage = lazy(() => import('@/pages/AuthPage'));
@@ -83,10 +83,130 @@ function GroupChatRoute() {
   );
 }
 
+function AppRoutes() {
+  const { user } = useAuth();
+  const location = useLocation();
+
+  if (user) {
+    return (
+      <div className="app-frame">
+        <TopNavigation />
+        <main className="app-page">
+          <AnimatePresence mode="wait" initial={false}>
+            <Routes location={location} key={location.pathname}>
+
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <PageTransition><HomePage /></PageTransition>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/notes"
+                element={
+                  <ProtectedRoute>
+                    <PageTransition><NotesPage /></PageTransition>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <PageTransition fast><ProfilePage /></PageTransition>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <PageTransition fast><SettingsPage /></PageTransition>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/status"
+                element={
+                  <ProtectedRoute>
+                    <PageTransition fast><StatusPage /></PageTransition>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/secret"
+                element={
+                  <ProtectedRoute>
+                    <PageTransition><SecretChatPage /></PageTransition>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/group/:groupId"
+                element={<GroupChatRoute />}
+              />
+
+              <Route
+                path="*"
+                element={
+                  <Navigate to="/" replace />
+                }
+              />
+
+            </Routes>
+          </AnimatePresence>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <Routes location={location} key={location.pathname}>
+
+        <Route
+          path="/login"
+          element={
+            <PageTransition><AuthPage /></PageTransition>
+          }
+        />
+
+        <Route
+          path="/register"
+          element={
+            <PageTransition><AuthPage /></PageTransition>
+          }
+        />
+
+        <Route
+          path="/forgot-password"
+          element={
+            <PageTransition><ForgotPasswordScreen /></PageTransition>
+          }
+        />
+
+        <Route
+          path="*"
+          element={
+            <Navigate to="/login" replace />
+          }
+        />
+
+      </Routes>
+    </AnimatePresence>
+  );
+}
+
 export default function App() {
   const { user, loading } = useAuth();
-  const location = useLocation();
-  useViewportHeight();
 
   if (loading) {
     return <PageLoader />;
@@ -94,110 +214,9 @@ export default function App() {
 
   return (
     <Suspense fallback={<PageLoader />}>
-      <AnimatePresence mode="wait" initial={false}>
-        <Routes location={location} key={location.pathname}>
-
-          <Route
-            path="/login"
-            element={
-              user ? <Navigate to="/" replace /> : (
-                <PageTransition><AuthPage /></PageTransition>
-              )
-            }
-          />
-
-          <Route
-            path="/register"
-            element={
-              user ? <Navigate to="/" replace /> : (
-                <PageTransition><AuthPage /></PageTransition>
-              )
-            }
-          />
-
-          <Route
-            path="/forgot-password"
-            element={
-              user ? <Navigate to="/" replace /> : (
-                <PageTransition><ForgotPasswordScreen /></PageTransition>
-              )
-            }
-          />
-
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <PageTransition><HomePage /></PageTransition>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/notes"
-            element={
-              <ProtectedRoute>
-                <PageTransition><NotesPage /></PageTransition>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <PageTransition fast><ProfilePage /></PageTransition>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <PageTransition fast><SettingsPage /></PageTransition>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/status"
-            element={
-              <ProtectedRoute>
-                <PageTransition fast><StatusPage /></PageTransition>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/secret"
-            element={
-              <ProtectedRoute>
-                <PageTransition><SecretChatPage /></PageTransition>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/group/:groupId"
-            element={<GroupChatRoute />}
-          />
-
-          <Route
-            path="*"
-            element={
-              <Navigate
-                to={user ? "/" : "/login"}
-                replace
-              />
-            }
-          />
-
-        </Routes>
-      </AnimatePresence>
+      <AppRoutes />
 
       {user && <CallModal />}
-
     </Suspense>
   );
 }

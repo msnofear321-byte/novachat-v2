@@ -3,8 +3,16 @@ export interface User {
   displayName: string;
   email: string;
   photoURL: string;
-  status: 'online' | 'offline';
-  lastSeen: number;
+  /**
+   * Real-time presence. `true` only while the app is open, visible and online
+   * (maintained by the heartbeat). A reader must treat the user as offline
+   * when `online !== true` or when `lastActive` is stale (see isOnlineNow).
+   */
+  online?: boolean;
+  /** Server timestamp (or legacy numeric epoch) of the last known sighting. */
+  lastSeen?: number | { seconds: number; nanoseconds?: number };
+  /** Server timestamp refreshed every 20s by the presence heartbeat. */
+  lastActive?: number | { seconds: number; nanoseconds?: number };
   createdAt: number;
   about?: string;
   phone?: string;

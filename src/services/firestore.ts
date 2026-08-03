@@ -13,7 +13,6 @@ import {
   addDoc,
   deleteDoc,
   writeBatch,
-  increment,
   arrayUnion,
   arrayRemove,
   type Unsubscribe,
@@ -491,16 +490,9 @@ export function subscribeToTypingStatus(
 
 // ── Presence ──────────────────────────────────────────────
 
-export async function setOnlineStatus(
-  userId: string,
-  status: 'online' | 'offline',
-): Promise<void> {
-  await setDoc(
-    doc(db, 'users', userId),
-    { status, lastSeen: Date.now() },
-    { merge: true },
-  );
-}
+// Presence is written ONLY by the authenticated user's own session
+// (src/services/presence.ts) via `online: boolean` + server timestamps, and
+// read back here. Clients never force other users online.
 
 export function subscribeToUserPresence(
   userId: string,

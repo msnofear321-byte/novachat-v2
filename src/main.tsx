@@ -7,6 +7,8 @@ import App from './App';
 import { ThemeProvider } from './context/ThemeContext';
 import { WallpaperProvider } from './context/WallpaperContext';
 import { AuthProvider } from './context/AuthContext';
+import { KeyboardProvider } from './context/KeyboardContext';
+import { UnreadProvider } from './context/UnreadContext';
 
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -42,7 +44,11 @@ createRoot(root).render(
         <ThemeProvider>
           <WallpaperProvider>
             <AuthProvider>
-              <App />
+              <UnreadProvider>
+                <KeyboardProvider>
+                  <App />
+                </KeyboardProvider>
+              </UnreadProvider>
             </AuthProvider>
           </WallpaperProvider>
         </ThemeProvider>

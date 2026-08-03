@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  HiOutlineArrowLeft, HiOutlinePlus, HiOutlineMagnifyingGlass,
+  HiOutlinePlus, HiOutlineMagnifyingGlass,
   HiOutlineStar, HiOutlineTrash,
   HiOutlineMapPin, HiOutlinePhoto, HiOutlineCheckCircle,
   HiOutlineXMark, HiOutlineMicrophone, HiOutlineMusicalNote,
@@ -9,7 +9,6 @@ import {
   HiOutlineDocumentText, HiOutlineListBullet,
 } from 'react-icons/hi2';
 import { HiStar } from 'react-icons/hi';
-import { useNavigate } from 'react-router';
 import { useAuth } from '@/context/AuthContext';
 import { subscribeNotes, createNote, updateNote, deleteNote } from '@/services/notes';
 import { uploadToCloudinary } from '@/services/cloudinary';
@@ -35,7 +34,6 @@ function formatTime(seconds: number) {
 }
 
 export default function NotesPage() {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,13 +208,9 @@ export default function NotesPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-[var(--bg-primary)]">
+    <div className="h-full flex flex-col bg-[var(--bg-primary)]">
       <div className="px-4 py-3 border-b border-[var(--border-primary)] bg-[var(--bg-card)]/80 backdrop-blur-xl">
         <div className="flex items-center gap-3 mb-3">
-          <motion.button whileTap={{ scale: 0.9 }} onClick={() => navigate('/')}
-            className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)]">
-            <HiOutlineArrowLeft className="w-5 h-5" />
-          </motion.button>
           <h1 className="text-[20px] font-bold text-[var(--text-primary)] flex-1">Notes</h1>
           <motion.button whileTap={{ scale: 0.9 }} onClick={openNewNote}
             className="w-9 h-9 rounded-[10px] flex items-center justify-center bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-gradient-end)] text-white">

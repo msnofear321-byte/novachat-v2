@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import UserAvatar from '@/components/UserAvatar';
+import { isOnlineNow } from '@/services/presence';
 import type { Conversation, User } from '@/types';
 import { motion } from 'framer-motion';
 import { HiOutlineMapPin, HiOutlineBellSlash } from 'react-icons/hi2';
@@ -7,6 +8,7 @@ import { HiOutlineMapPin, HiOutlineBellSlash } from 'react-icons/hi2';
 interface ChatItemProps {
   conversation: Conversation;
   otherUser: User | undefined;
+  online?: boolean;
   isActive: boolean;
   onSelect: (conversationId: string) => void;
   isTyping?: boolean;
@@ -30,8 +32,8 @@ function formatChatTime(timestamp: number): string {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function ChatItem({ conversation, otherUser, isActive, onSelect, isTyping }: ChatItemProps) {
-  const isOnline = otherUser?.status === 'online';
+function ChatItem({ conversation, otherUser, online, isActive, onSelect, isTyping }: ChatItemProps) {
+  const isOnline = online ?? isOnlineNow(otherUser);
   const lastMsg = conversation.lastMessage || 'No messages yet';
 
   return (

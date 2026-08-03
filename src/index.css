@@ -533,14 +533,49 @@ body {
   user-select: none;
 }
 
-/* ── App shell (keyboard-safe viewport height) ──── */
-.app-shell {
+/* ── App frame (sticky top nav + page, keyboard-safe) ── */
+.app-frame {
+  display: flex;
+  flex-direction: column;
   height: 100dvh;
   height: var(--app-height, 100dvh);
+  overflow: hidden;
+  transition: height 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: var(--bg-primary);
+}
+
+.app-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-topnav {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 30;
+  background-color: var(--bg-primary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.app-topnav-tabs {
+  position: relative;
+  display: flex;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 @media (min-width: 768px) {
-  .app-shell {
+  .app-frame {
     height: 100vh;
   }
 }

@@ -1,18 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router';
 import { motion } from 'framer-motion';
-import Sidebar from '@/components/Sidebar';
-import SearchUsers from '@/components/SearchUsers';
 import ChatList from '@/components/ChatList';
 import ChatPage from '@/components/ChatPage';
-import MobileBottomNav from '@/components/MobileBottomNav';
-import MobileSidebar from '@/components/MobileSidebar';
 import MusicNotesStrip from '@/components/MusicNotesStrip';
-import { useAuth } from '@/context/AuthContext';
+import { useUnread } from '@/context/UnreadContext';
 import { getAllUsers, createConversation } from '@/services/firestore';
 import UserAvatar from '@/components/UserAvatar';
-import { HiOutlineMagnifyingGlass, HiOutlineCog6Tooth, HiOutlineBars3 } from 'react-icons/hi2';
-import { useNavigate } from 'react-router';
 import type { User } from '@/types';
 
 function useIsMobile(breakpoint = 768) {
@@ -32,32 +26,19 @@ function useIsMobile(breakpoint = 768) {
 }
 
 export default function HomePage() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeConversationId = searchParams.get('c') || undefined;
-  const [searchOpen, setSearchOpen] = useState(false);
   const [chatListKey, setChatListKey] = useState(0);
   const isMobile = useIsMobile();
-  const [totalUnread, setTotalUnread] = useState(0);
+  const { setTotalUnread } = useUnread();
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     if (activeConversationId || isMobile) return;
     setUsersLoading(true);
     getAllUsers().then((users) => { setAllUsers(users); setUsersLoading(false); }).catch(() => setUsersLoading(false));
   }, [activeConversationId, isMobile]);
-
-  const handleConversationCreated = useCallback((id: string) => {
-    if (id.startsWith('group_')) {
-      navigate(`/group/${id}`);
-    } else {
-      setSearchParams({ c: id });
-      setChatListKey((k) => k + 1);
-    }
-  }, [setSearchParams, navigate]);
 
   const handleConversationDeleted = useCallback(() => {
     setSearchParams({});
@@ -68,76 +49,23 @@ export default function HomePage() {
   }, [setSearchParams]);
 
   return (
-    <div className="app-shell flex bg-[var(--bg-primary)] overflow-hidden overflow-x-hidden safe-area-top">
-      {/* Desktop sidebar navigation */}
-      <div className="hidden md:flex">
-        <Sidebar
-          onOpenSearch={() => setSearchOpen(true)}
-          totalUnread={totalUnread}
-        />
-      </div>
-
+    <div className="h-full flex bg-[var(--bg-primary)] overflow-hidden overflow-x-hidden">
       {/* Chat list panel */}
       <div
         className={`flex-shrink-0 h-full border-r border-[var(--border-primary)] flex-col bg-[var(--bg-sidebar)] ${
           isMobile
             ? activeConversationId
               ? 'hidden'
-              : 'flex w-full pb-[56px]'
+              : 'flex w-full'
             : 'flex w-[320px] lg:w-[380px]'
         }`}
       >
-        {/* Header with profile + search */}
-        <div className="px-3 sm:px-4 pt-3 sm:pt-4 pb-2">
-          {/* Top row: Avatar + title + settings */}
-          <div className="flex items-center justify-between mb-2 sm:mb-3">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setDrawerOpen(true)}
-                aria-label="Open menu"
-                className="md:hidden w-9 h-9 -ml-1 rounded-[10px] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--hover-bg)] transition-all"
-              >
-                <HiOutlineBars3 className="w-[22px] h-[22px]" />
-              </motion.button>
-              <button onClick={() => navigate('/profile')} className="relative">
-                <UserAvatar photoURL={user?.photoURL ?? undefined} displayName={user?.displayName || '?'} size="sm" online />
-              </button>
-              <h2 className="text-[18px] sm:text-[20px] font-bold text-[var(--text-primary)]">Chats</h2>
-              {totalUnread > 0 && (
-                <span className="glow-badge">{totalUnread > 99 ? '99+' : totalUnread}</span>
-              )}
-            </div>
-            <div className="flex items-center gap-1">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => navigate('/settings')}
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-[10px] sm:rounded-[11px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] transition-all"
-              >
-                <HiOutlineCog6Tooth className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" />
-              </motion.button>
-            </div>
-          </div>
-
-          {/* Search bar */}
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setSearchOpen(true)}
-            className="w-full flex items-center gap-3 px-3 sm:px-4 py-2 sm:py-2.5 bg-[var(--bg-input)] border border-[var(--border-primary)] rounded-[12px] sm:rounded-[14px] text-[var(--text-muted)] text-[12px] sm:text-[13px] hover:border-[var(--accent-primary)]/30 hover:bg-[var(--hover-bg)] transition-all duration-200"
-          >
-            <HiOutlineMagnifyingGlass className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-            <span>Search users to chat...</span>
-          </motion.button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto custom-scrollbar pb-[calc(72px+env(safe-area-inset-bottom,0px))]">
+        <div className="flex-1 overflow-y-auto custom-scrollbar pb-[calc(env(safe-area-inset-bottom,0px)+12px)]">
           <MusicNotesStrip />
           <ChatList
             searchQuery=""
             activeConversationId={activeConversationId}
             refreshKey={chatListKey}
-            onSearchOpen={() => setSearchOpen(true)}
             onTotalUnreadChange={setTotalUnread}
           />
         </div>
@@ -159,7 +87,6 @@ export default function HomePage() {
               conversationId={activeConversationId}
               key={activeConversationId}
               onBack={isMobile ? handleBack : undefined}
-              onSearchOpen={() => setSearchOpen(true)}
               onConversationDeleted={handleConversationDeleted}
             />
           </div>
@@ -211,24 +138,6 @@ export default function HomePage() {
           )
         )}
       </div>
-
-      <SearchUsers isOpen={searchOpen} onClose={() => setSearchOpen(false)} onConversationCreated={handleConversationCreated} />
-
-      <MobileSidebar
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onOpenSearch={() => setSearchOpen(true)}
-        totalUnread={totalUnread}
-      />
-
-      {/* Mobile bottom navigation (hidden while a conversation is open) */}
-      {!isMobile || !activeConversationId ? (
-        <MobileBottomNav
-          onOpenSearch={() => setSearchOpen(true)}
-          totalUnread={totalUnread}
-        />
-      ) : null}
-
     </div>
   );
 }

@@ -3,6 +3,8 @@ import {
   deleteDoc, query, where, type Unsubscribe,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { isOnlineNow } from './presence';
+import type { User } from '@/types';
 
 export interface CallData {
   id: string;
@@ -95,9 +97,7 @@ export async function isUserOnline(uid: string): Promise<boolean> {
   try {
     const snap = await getDoc(doc(db, 'users', uid));
     if (snap.exists()) {
-      const data = snap.data();
-      if (data.status === 'online') return true;
-      if (data.lastSeen && Date.now() - data.lastSeen < 120000) return true;
+      return isOnlineNow(snap.data() as User);
     }
   } catch { /* ignore */ }
   return false;

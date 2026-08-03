@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { HiOutlineXMark } from 'react-icons/hi2';
 import { useAuth } from '@/context/AuthContext';
 import { searchUsers, sendMessage, createConversation } from '@/services/firestore';
+import { isOnlineNow } from '@/services/presence';
 import UserAvatar from '@/components/UserAvatar';
 import type { Message, User } from '@/types';
 
@@ -99,7 +100,7 @@ export default function ForwardModal({ message, onClose }: ForwardModalProps) {
           {results.map((u) => (
             <button key={u.uid} onClick={() => handleForward(u)} disabled={sending === u.uid || sent}
               className="w-full flex items-center gap-3 px-5 py-3 hover:bg-[var(--hover-bg)] transition-all disabled:opacity-50">
-              <UserAvatar photoURL={u.photoURL} displayName={u.displayName} size="md" online={u.status === 'online'} />
+              <UserAvatar photoURL={u.photoURL} displayName={u.displayName} size="md" online={isOnlineNow(u)} />
               <div className="text-left flex-1 min-w-0">
                 <p className="font-medium text-[var(--text-primary)] text-[14px] truncate">{u.displayName}</p>
               </div>

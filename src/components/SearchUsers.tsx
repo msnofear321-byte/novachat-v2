@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlineXMark, HiOutlineMagnifyingGlass, HiOutlineUserGroup } from 'react-icons/hi2';
 import { searchUsers, createConversation } from '@/services/firestore';
+import { isOnlineNow } from '@/services/presence';
 import UserAvatar from '@/components/UserAvatar';
 import GroupCreator from '@/components/GroupCreator';
 import type { User } from '@/types';
@@ -105,7 +106,7 @@ export default function SearchUsers({ isOpen, onClose, onConversationCreated }: 
                   disabled={creating === u.uid}
                   className="w-full flex items-center gap-3.5 px-5 py-3.5 transition-all disabled:opacity-50"
                 >
-                  <UserAvatar photoURL={u.photoURL} displayName={u.displayName} size="md" online={u.status === 'online'} />
+                  <UserAvatar photoURL={u.photoURL} displayName={u.displayName} size="md" online={isOnlineNow(u)} />
                   <div className="text-left flex-1 min-w-0">
                     <p className="font-medium text-[var(--text-primary)] text-[15px] truncate">{u.displayName}</p>
                     <p className="text-[var(--text-secondary)] text-[13px] truncate">{u.email}</p>

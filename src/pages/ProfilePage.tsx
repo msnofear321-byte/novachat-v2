@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlineCamera, HiOutlineCheck, HiOutlineArrowLeft, HiOutlineUser, HiOutlineShieldCheck, HiOutlineGlobeAlt, HiOutlineClock, HiOutlineTrash } from 'react-icons/hi2';
+import { HiOutlineCamera, HiOutlineCheck, HiOutlineUser, HiOutlineShieldCheck, HiOutlineGlobeAlt, HiOutlineClock, HiOutlineTrash } from 'react-icons/hi2';
 import { useAuth } from '@/context/AuthContext';
 import { updateUserProfile } from '@/services/firestore';
 import { uploadToCloudinary } from '@/services/cloudinary';
+import { isOnlineNow, PRESENCE_TICK_MS } from '@/services/presence';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/services/firebase';
 import UserAvatar from '@/components/UserAvatar';
@@ -13,7 +13,6 @@ import type { User } from '@/types';
 
 export default function ProfilePage() {
   const { user, userProfile } = useAuth();
-  const navigate = useNavigate();
   const [displayName, setDisplayName] = useState(userProfile?.displayName || user?.displayName || '');
   const [about, setAbout] = useState(userProfile?.about || '');
   const [phone, setPhone] = useState(userProfile?.phone || '');
@@ -21,7 +20,13 @@ export default function ProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [photoURL, setPhotoURL] = useState(userProfile?.photoURL || user?.photoURL || '');
+  const [now, setNow] = useState(() => Date.now());
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), PRESENCE_TICK_MS);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -71,16 +76,13 @@ export default function ProfilePage() {
     setPhotoURL('');
   }
 
-  const isOnline = userProfile?.status === 'online';
+  const isOnline = isOnlineNow(userProfile, now);
 
   return (
-    <div className="min-h-[100dvh] bg-[var(--bg-primary)]">
+    <div className="h-full overflow-y-auto custom-scrollbar bg-[var(--bg-primary)]">
       <div className="max-w-[600px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6 sm:mb-8">
-          <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-[12px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] transition-all">
-            <HiOutlineArrowLeft className="w-5 h-5" />
-          </button>
           <h1 className="text-[22px] font-bold text-[var(--text-primary)]">Profile</h1>
         </div>
 

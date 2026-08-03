@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlineArrowLeft, HiOutlineHeart, HiOutlineEye, HiOutlinePlus, HiOutlineTrash } from 'react-icons/hi2';
+import { HiOutlineHeart, HiOutlineEye, HiOutlinePlus, HiOutlineTrash } from 'react-icons/hi2';
 import { subscribeToStories, likeStory, unlikeStory, deleteStory, type Story } from '@/services/status';
 import { useAuth } from '@/context/AuthContext';
 import UserAvatar from '@/components/UserAvatar';
@@ -10,7 +9,6 @@ import StatusComposer from '@/components/StatusComposer';
 
 export default function StatusPage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [stories, setStories] = useState<Story[]>([]);
   const [viewingKey, setViewingKey] = useState<string>('');
   const [viewingStories, setViewingStories] = useState<Story[]>([]);
@@ -81,16 +79,11 @@ export default function StatusPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)]">
+    <div className="h-full overflow-y-auto custom-scrollbar bg-[var(--bg-primary)]">
       <div className="max-w-[600px] mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-[12px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] transition-all">
-              <HiOutlineArrowLeft className="w-5 h-5" />
-            </button>
-            <h1 className="text-[22px] font-bold text-[var(--text-primary)]">Status</h1>
-          </div>
+          <h1 className="text-[22px] font-bold text-[var(--text-primary)]">Status</h1>
         </div>
 
         {/* My Status */}
