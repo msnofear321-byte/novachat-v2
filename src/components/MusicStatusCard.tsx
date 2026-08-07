@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlineMusicalNote, HiOutlinePlay, HiOutlinePause, HiOutlineLink, HiOutlineXMark } from 'react-icons/hi2';
+import { HiOutlineMusicalNote, HiOutlinePlay, HiOutlineLink } from 'react-icons/hi2';
 import { saveMusicStatus, getMusicStatus } from '@/services/music';
 import type { MusicStatus } from '@/types';
 

@@ -22,7 +22,7 @@ import {
   unblockUser,
   subscribeToBlockedStatus,
 } from '@/services/firestore';
-import { doc, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, onSnapshot, writeBatch } from 'firebase/firestore';
 import { auth, db } from '@/services/firebase';
 import { uploadToCloudinary, getFileType, getMediaDownloadURL } from '@/services/cloudinary';
 import { showBrowserNotification } from '@/services/notifications';

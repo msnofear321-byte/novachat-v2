@@ -1,16 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   HiOutlineArrowLeft, HiOutlineLockClosed, HiOutlinePaperAirplane,
   HiOutlineShieldCheck, HiOutlineEyeSlash, HiOutlineEye,
-  HiOutlineTrash, HiOutlinePlus,
+  HiOutlineTrash,
 } from 'react-icons/hi2';
 import { useNavigate } from 'react-router';
 import { useAuth } from '@/context/AuthContext';
 import { useKeyboard } from '@/context/KeyboardContext';
 import { encryptText, decryptText } from '@/services/crypto';
 import {
-  doc, setDoc, onSnapshot, collection, addDoc, query, orderBy,
+  onSnapshot, collection, addDoc, query, orderBy,
 } from 'firebase/firestore';
 import { db } from '@/services/firebase';
 

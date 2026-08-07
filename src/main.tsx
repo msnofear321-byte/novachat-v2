@@ -4,40 +4,38 @@ import { BrowserRouter } from 'react-router';
 
 import App from './App';
 
+import ErrorBoundary from './components/ErrorBoundary';
+
 import { ThemeProvider } from './context/ThemeContext';
 import { WallpaperProvider } from './context/WallpaperContext';
 import { AuthProvider } from './context/AuthContext';
-import { KeyboardProvider } from './context/KeyboardContext';
 import { UnreadProvider } from './context/UnreadContext';
-
-import ErrorBoundary from './components/ErrorBoundary';
+import { KeyboardProvider } from './context/KeyboardContext';
 
 import './index.css';
 
-const root = document.getElementById('root');
-
-if (!root) {
-  throw new Error('Root element not found');
-}
-
 function registerAutoRefresh() {
   const buildId = import.meta.env.VITE_BUILD_ID || 'novachat-stable';
-  const lastKnown = sessionStorage.getItem('app-build-id');
+  const storedBuildId = sessionStorage.getItem('app-build-id');
 
-  if (!lastKnown) {
+  if (storedBuildId && storedBuildId !== buildId) {
     sessionStorage.setItem('app-build-id', buildId);
+    window.location.reload();
     return;
   }
 
-  if (lastKnown !== buildId) {
-    sessionStorage.setItem('app-build-id', buildId);
-    return;
-  }
+  sessionStorage.setItem('app-build-id', buildId);
 }
 
 registerAutoRefresh();
 
-createRoot(root).render(
+const container = document.getElementById('root');
+
+if (!container) {
+  throw new Error('Root element not found');
+}
+
+createRoot(container).render(
   <StrictMode>
     <ErrorBoundary>
       <BrowserRouter>

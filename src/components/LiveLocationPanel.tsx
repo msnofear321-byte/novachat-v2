@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   HiOutlineMapPin, HiOutlineXMark, HiOutlineArrowTopRightOnSquare,
   HiOutlineClock, HiOutlineStop,
@@ -32,10 +32,6 @@ export default function LiveLocationPanel({ conversationId, onClose, isGroup = f
   const [error, setError] = useState('');
   const [duration, setDuration] = useState(30);
   const watchIdRef = useRef<number | null>(null);
-
-  const docPath = isGroup
-    ? `liveLocations/group_${conversationId}`
-    : `liveLocations/${conversationId}`;
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'liveLocations', isGroup ? `group_${conversationId}` : conversationId), (snap) => {
@@ -76,7 +72,7 @@ export default function LiveLocationPanel({ conversationId, onClose, isGroup = f
           await setDoc(doc(db, 'liveLocations', isGroup ? `group_${conversationId}` : conversationId), data);
         } catch {}
       },
-      (err) => {
+      (_err) => {
         setError('Location access denied');
         setSharing(false);
       },

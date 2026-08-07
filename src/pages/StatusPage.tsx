@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlineHeart, HiOutlineEye, HiOutlinePlus, HiOutlineTrash } from 'react-icons/hi2';
-import { subscribeToStories, likeStory, unlikeStory, deleteStory, type Story } from '@/services/status';
+import { subscribeToStories, deleteStory, type Story } from '@/services/status';
 import { useAuth } from '@/context/AuthContext';
 import UserAvatar from '@/components/UserAvatar';
 import StatusViewer from '@/components/StatusViewer';
@@ -45,16 +45,6 @@ export default function StatusPage() {
     setViewingStories(storyGroup);
     setViewingIndex(index);
     setViewingKey(`${storyGroup[0]?.userId || 'mine'}_${Date.now()}`);
-  }
-
-  function handleLikeToggle(story: Story) {
-    if (!user) return;
-    const liked = story.likes?.includes(user.uid);
-    if (liked) {
-      unlikeStory(story.id);
-    } else {
-      likeStory(story.id);
-    }
   }
 
   const handleDeleteStory = useCallback((story: Story) => {

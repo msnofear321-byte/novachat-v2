@@ -9,7 +9,6 @@ import {
   HiOutlineDocumentText, HiOutlineListBullet,
 } from 'react-icons/hi2';
 import { HiStar } from 'react-icons/hi';
-import { useAuth } from '@/context/AuthContext';
 import { subscribeNotes, createNote, updateNote, deleteNote } from '@/services/notes';
 import { uploadToCloudinary } from '@/services/cloudinary';
 import { useRecorder } from '@/hooks/useRecorder';
@@ -34,7 +33,6 @@ function formatTime(seconds: number) {
 }
 
 export default function NotesPage() {
-  const { user } = useAuth();
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');

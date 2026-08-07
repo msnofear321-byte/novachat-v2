@@ -13,10 +13,8 @@ import {
   HiOutlineTrash,
   HiOutlineCheck,
 } from 'react-icons/hi2';
-import { HiStar } from 'react-icons/hi';
 import { useTheme, THEMES, type ThemeName } from '@/context/ThemeContext';
 import { useWallpaper } from '@/context/WallpaperContext';
-import { WALLPAPERS } from '@/types/wallpaper';
 import {
   clearChat,
   togglePinConversation,
@@ -79,7 +77,7 @@ export default function ChatMenu({
   conversation,
   otherUserId: _otherUserId,
   onSearchOpen,
-  onConversationDeleted,
+  onConversationDeleted: _onConversationDeleted,
 }: ChatMenuProps) {
   const { user: _user } = useAuth();
   const { theme, setTheme } = useTheme();
