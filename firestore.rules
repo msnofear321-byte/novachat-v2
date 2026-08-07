@@ -65,20 +65,27 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
-    // Calls (meta). Participants must be specified on create.
+    // Calls (meta). Access is based on the caller/receiver ids written by the
+    // client (see src/services/calls.ts). Reads are granted for collection
+    // queries filtered by `receiverId`/`callerId` (incoming-call listener,
+    // cleanup, in-call checks) as well as direct doc reads.
     match /calls/{callId} {
-      allow read: if request.auth != null && exists(/databases/$(database)/documents/calls/$(callId))
-        && request.auth.uid in get(/databases/$(database)/documents/calls/$(callId)).data.participants;
+      allow read: if request.auth != null
+        && (request.auth.uid == resource.data.callerId
+            || request.auth.uid == resource.data.receiverId);
       allow create: if request.auth != null
-        && request.resource.data.participants is list
-        && request.auth.uid in request.resource.data.participants;
-      allow update, delete: if request.auth != null && exists(/databases/$(database)/documents/calls/$(callId))
-        && request.auth.uid in get(/databases/$(database)/documents/calls/$(callId)).data.participants;
+        && (request.auth.uid == request.resource.data.callerId
+            || request.auth.uid == request.resource.data.receiverId);
+      allow update, delete: if request.auth != null
+        && (request.auth.uid == resource.data.callerId
+            || request.auth.uid == resource.data.receiverId);
 
-      // allow basic access for subcollections only to call participants
+      // allow basic access for subcollections (ICE candidates) to the call's
+      // caller and receiver
       match /{subcol=**} {
-        allow read, write: if request.auth != null && exists(/databases/$(database)/documents/calls/$(callId))
-          && request.auth.uid in get(/databases/$(database)/documents/calls/$(callId)).data.participants;
+        allow read, write: if request.auth != null
+          && (request.auth.uid == get(/databases/$(database)/documents/calls/$(callId)).data.callerId
+              || request.auth.uid == get(/databases/$(database)/documents/calls/$(callId)).data.receiverId);
       }
     }
 
@@ -88,11 +95,17 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Call history
+    // Call history (written by either party; queried by callerId/receiverId)
     match /callHistory/{docId} {
-      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null
+        && (request.auth.uid == resource.data.callerId
+            || request.auth.uid == resource.data.receiverId);
+      allow create: if request.auth != null
+        && (request.auth.uid == request.resource.data.callerId
+            || request.auth.uid == request.resource.data.receiverId);
+      allow update, delete: if request.auth != null
+        && (request.auth.uid == resource.data.callerId
+            || request.auth.uid == resource.data.receiverId);
     }
 
     // Reports
@@ -134,11 +147,22 @@ service cloud.firestore {
       allow create, update, delete: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Music notes (feed of per-user music notes)
+    match /musicNotes/{userId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
     // Secret chats
     match /secretChats/{chatId} {
       allow read: if request.auth != null && request.auth.uid in resource.data.participants;
       allow create: if request.auth != null && request.resource.data.participants is list && request.auth.uid in request.resource.data.participants;
       allow update, delete: if request.auth != null && request.auth.uid in resource.data.participants;
+    }
+
+    // Secret chat messages (per-user encrypted inbox)
+    match /secretChats/{userId}/messages/{messageId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
     // Secret chat locks

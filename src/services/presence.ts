@@ -2,12 +2,20 @@ import { doc, deleteField, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import type { User } from '@/types';
 
-// Heartbeat cadence: we re-stamp `lastActive` every 20s while the app is
-// visible/online. A reader treats a user as offline once `lastActive` is older
-// than PRESENCE_STALE_MS (40s), so a lost "offline" write (kill-switch, crash,
-// frozen tab) can never leave anyone stuck online.
+// ── Config ───────────────────────────────────────────────────
+// Always-online mode: the app never voluntarily marks the user offline (no
+// offline write on tab hide / page hide / network drop) and keeps sending
+// heartbeats even while the tab is in the background, so the user stays
+// "online" as long as the app is open. Flip to `false` to restore the old
+// "online only while focused and connected" behavior.
+export const ALWAYS_ONLINE = true;
+
+// Heartbeat cadence: we re-stamp `lastActive` every 20s while the app runs.
 export const HEARTBEAT_INTERVAL_MS = 20000;
-export const PRESENCE_STALE_MS = 40000;
+// How old `lastActive` may be before readers treat the user as offline. The
+// generous window keeps a throttled background tab (timers can slow to ~1/min
+// in hidden tabs) from flipping an always-online user offline mid-session.
+export const PRESENCE_STALE_MS = 300000;
 // Client-side re-check cadence so green dots drop shortly after going stale.
 export const PRESENCE_TICK_MS = 5000;
 
@@ -100,8 +108,8 @@ export function isOnlineNow(user: User | null | undefined, now = Date.now()): bo
 
 function markOnline(): void {
   if (!active || !currentUid) return;
-  if (!navigator.onLine) return;
-  if (document.visibilityState !== 'visible') return;
+  if (!ALWAYS_ONLINE && !navigator.onLine) return;
+  if (!ALWAYS_ONLINE && document.visibilityState !== 'visible') return;
   setUserOnline(currentUid);
 }
 
@@ -126,6 +134,12 @@ function stopHeartbeat(): void {
 
 function handleVisibilityChange(): void {
   if (!active) return;
+  if (ALWAYS_ONLINE) {
+    // Stay online even when the tab is hidden; keep the heartbeat running.
+    markOnline();
+    startHeartbeat();
+    return;
+  }
   if (document.visibilityState === 'visible') {
     markOnline();
     startHeartbeat();
@@ -137,12 +151,18 @@ function handleVisibilityChange(): void {
 
 function handlePageHide(): void {
   if (!active) return;
+  if (ALWAYS_ONLINE) return;
   stopHeartbeat();
   markOffline();
 }
 
 function handlePageShow(): void {
   if (!active) return;
+  if (ALWAYS_ONLINE) {
+    markOnline();
+    startHeartbeat();
+    return;
+  }
   if (navigator.onLine && document.visibilityState === 'visible') {
     markOnline();
     startHeartbeat();
@@ -154,11 +174,12 @@ function handlePageShow(): void {
 function handleNetworkOnline(): void {
   if (!active) return;
   markOnline();
-  if (document.visibilityState === 'visible') startHeartbeat();
+  startHeartbeat();
 }
 
 function handleNetworkOffline(): void {
   if (!active) return;
+  if (ALWAYS_ONLINE) return;
   stopHeartbeat();
   markOffline();
 }
@@ -174,7 +195,7 @@ export function initPresence(uid: string): void {
   currentUid = uid;
   active = true;
   markOnline();
-  if (navigator.onLine && document.visibilityState === 'visible') startHeartbeat();
+  startHeartbeat();
   document.addEventListener('visibilitychange', handleVisibilityChange);
   window.addEventListener('pagehide', handlePageHide, { capture: true });
   window.addEventListener('pageshow', handlePageShow, { capture: true });
