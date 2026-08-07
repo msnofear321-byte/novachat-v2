@@ -30,7 +30,8 @@
   },
   "overrides": {
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "@firebase/auth": "1.13.3"
   },
   "devDependencies": {
     "@types/node": "^24.13.2",
