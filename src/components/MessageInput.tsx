@@ -30,8 +30,14 @@ function MessageInput({ onSend, onFileSelect, onTyping, onVoiceRecorded, uploadP
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 150)}px`;
   }, []);
+
+  // On touch devices the keyboard "return" key should insert a newline and the
+  // dedicated send button sends; on desktop Enter sends and Shift+Enter wraps.
+  const isTouchDevice = useRef<boolean>(
+    typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches,
+  ).current;
 
   useEffect(() => {
     if (!replyingTo) textareaRef.current?.focus();
@@ -59,6 +65,7 @@ function MessageInput({ onSend, onFileSelect, onTyping, onVoiceRecorded, uploadP
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
+      if (isTouchDevice) return; // mobile: newline; send via the dedicated send button
       e.preventDefault();
       handleSend();
     }
@@ -99,7 +106,7 @@ function MessageInput({ onSend, onFileSelect, onTyping, onVoiceRecorded, uploadP
     setIsRecording(false);
   }, [onVoiceRecorded]);
 
-  const iconBtn = 'w-9 h-9 sm:w-10 sm:h-10 rounded-[10px] sm:rounded-[12px] flex items-center justify-center transition-all text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--hover-bg)]';
+  const iconBtn = 'w-11 h-11 rounded-[12px] flex items-center justify-center transition-all text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--hover-bg)]';
 
   return (
     <div className="relative">
@@ -175,10 +182,10 @@ function MessageInput({ onSend, onFileSelect, onTyping, onVoiceRecorded, uploadP
               autoComplete="off"
               autoCapitalize="sentences"
               autoCorrect="on"
-              enterKeyHint="send"
+              enterKeyHint={isTouchDevice ? 'enter' : 'send'}
               rows={1}
               aria-label="Message"
-              className="w-full resize-none overflow-y-auto max-h-[120px] px-3 sm:px-4 py-2.5 sm:py-3 bg-[var(--bg-input)] border border-[var(--border-primary)] rounded-[12px] sm:rounded-[14px] text-[var(--text-primary)] text-[14px] sm:text-[14.5px] leading-[1.4] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/30 focus:border-[var(--accent-primary)]/30 transition-all duration-200 disabled:opacity-50" />
+              className="composer-textarea w-full resize-none overflow-y-auto max-h-[150px] min-h-[44px] px-3 sm:px-4 py-2 sm:py-2.5 bg-[var(--bg-input)] border border-[var(--border-primary)] rounded-[12px] sm:rounded-[14px] text-[var(--text-primary)] text-fluid-input leading-[1.4] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/30 focus:border-[var(--accent-primary)]/30 transition-all duration-200 disabled:opacity-50" />
           </div>
 
           <AnimatePresence mode="wait">
@@ -186,7 +193,7 @@ function MessageInput({ onSend, onFileSelect, onTyping, onVoiceRecorded, uploadP
               <motion.button key="send" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}
                 transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
                 whileTap={{ scale: 0.85 }} onClick={handleSend} aria-label="Send message"
-                className="w-10 h-10 sm:w-11 sm:h-11 flex-shrink-0 bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-gradient-end)] hover:from-[var(--accent-secondary)] hover:to-[var(--accent-primary)] text-white rounded-[12px] sm:rounded-[14px] flex items-center justify-center shadow-[var(--accent-shadow)] transition-all">
+                className="w-11 h-11 flex-shrink-0 bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-gradient-end)] hover:from-[var(--accent-secondary)] hover:to-[var(--accent-primary)] text-white rounded-[12px] sm:rounded-[14px] flex items-center justify-center shadow-[var(--accent-shadow)] transition-all">
                 <HiOutlinePaperAirplane className="w-[18px] h-[18px] sm:w-5 sm:h-5 rotate-[-25deg] translate-x-[-1px]" />
               </motion.button>
             ) : !hideMediaControls ? (
@@ -197,7 +204,7 @@ function MessageInput({ onSend, onFileSelect, onTyping, onVoiceRecorded, uploadP
             ) : (
               <motion.button key="send-placeholder" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}
                 transition={{ duration: 0.15 }} disabled
-                className="w-10 h-10 sm:w-11 sm:h-11 flex-shrink-0 rounded-[12px] sm:rounded-[14px] flex items-center justify-center text-[var(--text-muted)] bg-[var(--bg-input)]">
+                className="w-11 h-11 flex-shrink-0 rounded-[12px] sm:rounded-[14px] flex items-center justify-center text-[var(--text-muted)] bg-[var(--bg-input)]">
                 <HiOutlinePaperAirplane className="w-[18px] h-[18px] sm:w-5 sm:h-5 rotate-[-25deg] translate-x-[-1px]" />
               </motion.button>
             )}

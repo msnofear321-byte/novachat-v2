@@ -4,12 +4,12 @@ export type ThemeName = 'dark' | 'light' | 'midnight' | 'forest' | 'sunset' | 'r
 export type FontName = 'inter' | 'poppins' | 'space-grotesk' | 'outfit' | 'jetbrains';
 
 export const THEMES: { id: ThemeName; label: string; preview: [string, string, string] }[] = [
-  { id: 'dark', label: 'Dark', preview: ['#0B0B0F', '#7C3AED', '#F8FAFC'] },
-  { id: 'light', label: 'Light', preview: ['#F8F9FC', '#7C3AED', '#0F172A'] },
-  { id: 'midnight', label: 'Midnight Blue', preview: ['#0A0E1A', '#3B82F6', '#E2E8F0'] },
-  { id: 'forest', label: 'Forest', preview: ['#0A120D', '#16A34A', '#ECFDF5'] },
-  { id: 'sunset', label: 'Sunset', preview: ['#140D0A', '#EA580C', '#FFF7ED'] },
-  { id: 'rose', label: 'Rose', preview: ['#140A0E', '#E11D48', '#FFF1F2'] },
+  { id: 'dark', label: 'Dark', preview: ['#0B0D12', '#8B5CF6', '#F4F6FB'] },
+  { id: 'light', label: 'Light', preview: ['#F4F5F9', '#7C3AED', '#11141C'] },
+  { id: 'midnight', label: 'Midnight Blue', preview: ['#0B1220', '#3B82F6', '#E6EDF7'] },
+  { id: 'forest', label: 'Forest', preview: ['#0A1510', '#22C55E', '#EDF9F1'] },
+  { id: 'sunset', label: 'Sunset', preview: ['#16110D', '#F97316', '#FCF6F0'] },
+  { id: 'rose', label: 'Rose', preview: ['#170F13', '#F43F5E', '#FDF3F5'] },
 ];
 
 export const FONTS: { id: FontName; label: string; family: string }[] = [

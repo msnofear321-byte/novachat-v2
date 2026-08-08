@@ -48,15 +48,23 @@ export interface Message {
   forwarded: boolean;
   duration?: number;
   pending?: boolean;
+  /** Map of reaction emoji -> array of user ids that reacted. */
+  reactions?: Record<string, string[]>;
+  /** Message-level pin (starred is a lighter "star"). */
+  pinned?: boolean;
 }
 
 export interface Conversation {
   id: string;
+  type?: 'direct' | 'group';
+  name?: string;
   participants: string[];
   lastMessage: string;
   lastMessageTime: number;
   lastMessageSenderId: string;
   unreadCount: number;
+  /** Per-user unread counts keyed by uid. Preferred over unreadCount. */
+  unreadByUser?: Record<string, number>;
   pinned: boolean;
   archived?: boolean;
   muted?: boolean;

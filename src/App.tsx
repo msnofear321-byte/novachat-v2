@@ -1,10 +1,11 @@
-import { lazy, Suspense, useCallback } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef } from 'react';
 import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, type Variants } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import TopNavigation from '@/components/TopNavigation';
 import CallModal from '@/components/CallModal';
+import useIsMobile from '@/hooks/useIsMobile';
 
 const AuthPage = lazy(() => import('@/pages/AuthPage'));
 const ForgotPasswordScreen = lazy(() => import('@/pages/ForgotPasswordScreen'));
@@ -17,43 +18,27 @@ const NotesPage = lazy(() => import('@/pages/NotesPage'));
 const GroupChatPage = lazy(() => import('@/components/GroupChatPage'));
 const SecretChatPage = lazy(() => import('@/pages/SecretChatPage'));
 
+/** Order of the main mobile tabs — used for swipe navigation + slide direction. */
+const TAB_PATHS = ['/', '/status', '/settings'];
+
 function PageLoader() {
   return (
     <div
       className="min-h-screen flex items-center justify-center"
-      style={{ background: '#050505' }}
+      style={{ background: 'var(--bg-primary)' }}
     >
-      <div className="w-7 h-7 border-[2.5px] border-white/20 border-t-purple-400 rounded-full animate-spin" />
+      <div className="w-7 h-7 border-[2.5px] border-[var(--accent-primary)]/20 border-t-[var(--accent-primary)] rounded-full animate-spin" />
     </div>
   );
 }
 
-const pageTransition = {
-  initial: { opacity: 0, y: 8, scale: 0.995 },
-  animate: { opacity: 1, y: 0, scale: 1 },
-  exit: { opacity: 0, y: -6, scale: 0.995 },
+const pageVariants: Variants = {
+  enter: (d: number) => ({ opacity: 1, x: d >= 0 ? 56 : -56 }),
+  center: { opacity: 1, x: 0 },
+  exit: (d: number) => ({ opacity: 0, x: d >= 0 ? -56 : 56 }),
 };
 
-const pageTransitionFast = {
-  initial: { opacity: 0, x: 30 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -30 },
-};
-
-function PageTransition({ children, fast }: { children: React.ReactNode; fast?: boolean }) {
-  const t = fast ? pageTransitionFast : pageTransition;
-  return (
-    <motion.div
-      initial={t.initial}
-      animate={t.animate}
-      exit={t.exit}
-      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-      className="h-full"
-    >
-      {children}
-    </motion.div>
-  );
-}
+const pageTransition = { duration: 0.2, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] };
 
 function GroupChatPageLoader() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -78,7 +63,7 @@ function GroupChatPageLoader() {
 function GroupChatRoute() {
   return (
     <ProtectedRoute>
-      <PageTransition><GroupChatPageLoader /></PageTransition>
+      <GroupChatPageLoader />
     </ProtectedRoute>
   );
 }
@@ -86,82 +71,130 @@ function GroupChatRoute() {
 function AppRoutes() {
   const { user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+
+  const currentTabIndex = TAB_PATHS.indexOf(location.pathname);
+  const prevTabIndexRef = useRef(currentTabIndex >= 0 ? currentTabIndex : 0);
+
+  let direction = 1;
+  if (currentTabIndex >= 0 && prevTabIndexRef.current >= 0 && currentTabIndex < prevTabIndexRef.current) {
+    direction = -1;
+  }
+
+  useEffect(() => {
+    if (currentTabIndex >= 0) prevTabIndexRef.current = currentTabIndex;
+  }, [currentTabIndex]);
+
+  const isChatOpen = location.pathname === '/' && location.search.includes('c=');
+  const swipeEnabled = isMobile && currentTabIndex >= 0 && !isChatOpen;
+
+  const handleSwipe = useCallback(
+    (dir: 1 | -1) => {
+      if (currentTabIndex < 0) return;
+      const next = currentTabIndex + dir;
+      if (next < 0 || next >= TAB_PATHS.length) return;
+      navigate(TAB_PATHS[next]);
+    },
+    [currentTabIndex, navigate],
+  );
 
   if (user) {
     return (
       <div className="app-frame">
         <TopNavigation />
         <main className="app-page">
-          <AnimatePresence mode="wait" initial={false}>
-            <Routes location={location} key={location.pathname}>
+          <AnimatePresence mode="popLayout" initial={false} custom={direction}>
+            <motion.div
+              key={location.pathname}
+              custom={direction}
+              variants={pageVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={pageTransition}
+              drag={swipeEnabled ? 'x' : false}
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={{ left: 0.18, right: 0.18 }}
+              dragMomentum={false}
+              onDragEnd={(_, info) => {
+                if (!swipeEnabled) return;
+                const w = window.innerWidth || 1;
+                const swipedLeft = info.offset.x < -w * 0.18 || info.velocity.x < -500;
+                const swipedRight = info.offset.x > w * 0.18 || info.velocity.x > 500;
+                if (swipedLeft) handleSwipe(1);
+                else if (swipedRight) handleSwipe(-1);
+              }}
+              className="relative h-full w-full"
+            >
+              <Routes location={location}>
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute>
+                      <HomePage />
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute>
-                    <PageTransition><HomePage /></PageTransition>
-                  </ProtectedRoute>
-                }
-              />
+                <Route
+                  path="/notes"
+                  element={
+                    <ProtectedRoute>
+                      <NotesPage />
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/notes"
-                element={
-                  <ProtectedRoute>
-                    <PageTransition><NotesPage /></PageTransition>
-                  </ProtectedRoute>
-                }
-              />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <ProfilePage />
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <PageTransition fast><ProfilePage /></PageTransition>
-                  </ProtectedRoute>
-                }
-              />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <SettingsPage />
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/settings"
-                element={
-                  <ProtectedRoute>
-                    <PageTransition fast><SettingsPage /></PageTransition>
-                  </ProtectedRoute>
-                }
-              />
+                <Route
+                  path="/status"
+                  element={
+                    <ProtectedRoute>
+                      <StatusPage />
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/status"
-                element={
-                  <ProtectedRoute>
-                    <PageTransition fast><StatusPage /></PageTransition>
-                  </ProtectedRoute>
-                }
-              />
+                <Route
+                  path="/secret"
+                  element={
+                    <ProtectedRoute>
+                      <SecretChatPage />
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/secret"
-                element={
-                  <ProtectedRoute>
-                    <PageTransition><SecretChatPage /></PageTransition>
-                  </ProtectedRoute>
-                }
-              />
+                <Route
+                  path="/group/:groupId"
+                  element={<GroupChatRoute />}
+                />
 
-              <Route
-                path="/group/:groupId"
-                element={<GroupChatRoute />}
-              />
-
-              <Route
-                path="*"
-                element={
-                  <Navigate to="/" replace />
-                }
-              />
-
-            </Routes>
+                <Route
+                  path="*"
+                  element={
+                    <Navigate to="/" replace />
+                  }
+                />
+              </Routes>
+            </motion.div>
           </AnimatePresence>
         </main>
       </div>
@@ -204,6 +237,33 @@ function AppRoutes() {
     </AnimatePresence>
   );
 }
+
+function PageTransition({ children, fast }: { children: React.ReactNode; fast?: boolean }) {
+  const t = fast ? pageTransitionFast : pageTransitionFade;
+  return (
+    <motion.div
+      initial={t.initial}
+      animate={t.animate}
+      exit={t.exit}
+      transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+      className="h-full"
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+const pageTransitionFast = {
+  initial: { opacity: 0, x: 30 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -30 },
+};
+
+const pageTransitionFade = {
+  initial: { opacity: 0, y: 8, scale: 0.995 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: -6, scale: 0.995 },
+};
 
 export default function App() {
   const { user, loading } = useAuth();

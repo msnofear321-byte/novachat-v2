@@ -68,24 +68,24 @@ export default function ForwardModal({ message, onClose }: ForwardModalProps) {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
       <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 12 }}
-        className="w-full max-w-[420px] glass-premium rounded-[20px] sm:rounded-[24px] overflow-hidden"
+        className="w-full max-w-[420px] glass-premium rounded-[20px] sm:rounded-[24px] overflow-hidden flex flex-col max-h-[calc(100dvh-2rem)]"
         onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-primary)]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-primary)] flex-shrink-0">
           <h3 className="font-semibold text-[var(--text-primary)]">Forward Message</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--hover-bg)] text-[var(--text-muted)] transition-all">
+          <button onClick={onClose} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-[var(--hover-bg)] text-[var(--text-muted)] transition-all">
             <HiOutlineXMark className="w-5 h-5" />
           </button>
         </div>
-        <div className="px-5 py-3 border-b border-[var(--border-primary)]">
+        <div className="px-5 py-3 border-b border-[var(--border-primary)] flex-shrink-0">
           <p className="text-[13px] text-[var(--text-secondary)] truncate italic">
             {message.type === 'text' ? message.text : `📎 ${message.type}`}
           </p>
         </div>
-        <div className="px-5 py-3 border-b border-[var(--border-primary)]">
+        <div className="px-5 py-3 border-b border-[var(--border-primary)] flex-shrink-0">
           <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search users..."
             className="w-full px-4 py-2.5 bg-[var(--bg-input)] border border-[var(--border-primary)] rounded-[12px] text-[var(--text-primary)] text-[13px] placeholder-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)]/30 transition-all" />
         </div>
-        <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+        <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
           {searching && (
             <div className="flex items-center justify-center py-8">
               <div className="w-5 h-5 border-2 border-[var(--text-muted)]/30 border-t-[var(--accent-primary)] rounded-full animate-spin" />

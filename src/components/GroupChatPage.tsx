@@ -130,10 +130,19 @@ export default function GroupChatPage({ groupId, onBack }: GroupChatPageProps) {
 
   const visibleMessages = useMemo(() => mergeGroupMessages(messages, pendingMessages), [messages, pendingMessages]);
 
+  // Auto-scroll to newest only when already near the bottom, so reading older
+  // history isn't interrupted by new incoming messages.
+  const isNearBottom = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+  }, []);
+
   useEffect(() => {
+    if (!isNearBottom()) return;
     const timeout = setTimeout(() => scrollToBottom('auto'), 100);
     return () => clearTimeout(timeout);
-  }, [visibleMessages.length, scrollToBottom]);
+  }, [visibleMessages.length, scrollToBottom, isNearBottom]);
 
   async function handleSend(text: string) {
     if (!user) return;
@@ -205,32 +214,32 @@ export default function GroupChatPage({ groupId, onBack }: GroupChatPageProps) {
   return (
     <div className="h-full flex flex-col bg-[var(--bg-chat)] relative">
       {/* Header */}
-      <div className="px-4 md:px-5 py-3 border-b border-[var(--border-primary)] bg-[var(--bg-card)]/80 backdrop-blur-xl flex items-center gap-3">
+      <div className="relative px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 border-b border-[var(--border-primary)] bg-[var(--bg-card)]/80 backdrop-blur-xl flex items-center gap-1.5 sm:gap-2 md:gap-3">
         {onBack && (
-          <motion.button whileTap={{ scale: 0.9 }} onClick={onBack}
-            className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] transition-all md:hidden flex-shrink-0">
-            <HiOutlineArrowLeft className="w-5 h-5" />
+          <motion.button whileTap={{ scale: 0.9 }} onClick={onBack} aria-label="Back"
+            className="w-11 h-11 rounded-[12px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] transition-all md:hidden flex-shrink-0">
+            <HiOutlineArrowLeft className="w-[20px] h-[20px]" />
           </motion.button>
         )}
-        <div className="flex-1 min-w-0 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-secondary)] flex items-center justify-center text-white font-semibold text-[13px] flex-shrink-0">
+        <div className="flex-1 min-w-0 flex items-center gap-2.5 sm:gap-3">
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-secondary)] flex items-center justify-center text-white font-semibold text-[14px] ring-2 ring-[var(--accent-glow)] flex-shrink-0">
             {group ? group.name.charAt(0).toUpperCase() : '?'}
           </div>
           <div className="min-w-0">
-            <h3 className="font-semibold text-[var(--text-primary)] text-[15px] truncate">{group?.name || 'Loading...'}</h3>
+            <h3 className="font-semibold text-[var(--text-primary)] text-fluid-chat-title leading-tight truncate">{group?.name || 'Loading...'}</h3>
             <p className="text-[12px] text-[var(--text-muted)] truncate">
               {group ? `${group.members.length} members` : ''}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setSearchQuery(!searchQuery)}
-            className={`w-10 h-10 rounded-[12px] flex items-center justify-center transition-all ${searchQuery ? 'text-[var(--accent-primary)] bg-[var(--accent-primary)]/10' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--hover-bg)]'}`}>
-            {searchQuery ? <HiOutlineXMark className="w-[18px] h-[18px]" /> : <HiOutlineMagnifyingGlass className="w-[18px] h-[18px]" />}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setSearchQuery(!searchQuery)} aria-label="Search messages"
+            className={`w-11 h-11 rounded-[12px] flex items-center justify-center transition-all ${searchQuery ? 'text-[var(--accent-primary)] bg-[var(--accent-primary)]/10' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--hover-bg)]'}`}>
+            {searchQuery ? <HiOutlineXMark className="w-[20px] h-[20px]" /> : <HiOutlineMagnifyingGlass className="w-[20px] h-[20px]" />}
           </motion.button>
-          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setInfoOpen(true)}
-            className="w-10 h-10 rounded-[12px] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--hover-bg)] transition-all">
-            <HiOutlineInformationCircle className="w-[18px] h-[18px]" />
+          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setInfoOpen(true)} aria-label="Group info"
+            className="w-11 h-11 rounded-[12px] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--hover-bg)] transition-all">
+            <HiOutlineInformationCircle className="w-[20px] h-[20px]" />
           </motion.button>
         </div>
       </div>
@@ -330,7 +339,7 @@ export default function GroupChatPage({ groupId, onBack }: GroupChatPageProps) {
                       }`}>
                         {msg.type === 'text' && (
                           <div className="px-4 py-2.5">
-                            <p className="text-[14.5px] leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
+                            <p className="text-fluid-message leading-relaxed whitespace-pre-wrap break-words wrap-anywhere">{msg.text}</p>
                           </div>
                         )}
                         {(msg.type === 'image' || msg.type === 'gif') && msg.mediaURL && (

@@ -15,9 +15,12 @@ import {
   writeBatch,
   arrayUnion,
   arrayRemove,
+  increment,
+  runTransaction,
   type Unsubscribe,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { normalizePhone } from '@/utils/phone';
 import type { User, Conversation, Message } from '@/types';
 
 function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
@@ -27,8 +30,55 @@ function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
   return obj;
 }
 
+/**
+ * Deterministic id for a 1:1 conversation.
+ *
+ * `|` is used instead of `_` because Firebase auth uids are base64url strings
+ * that frequently contain `_` (and Google uids are plain numbers). Splitting a
+ * `_`-joined id never worked, and it could even collide across user pairs.
+ * The `|` character cannot appear in any auth uid, so ids are unambiguous.
+ */
 function getConversationId(uid1: string, uid2: string): string {
-  return [uid1, uid2].sort().join('_');
+  return [uid1, uid2].sort().join('|');
+}
+
+export { getConversationId };
+
+/**
+ * Some conversations were created before the id scheme switched from `_` to
+ * `|`. Given two participants, look for an existing conversation doc between
+ * them so we reuse it instead of creating a duplicate.
+ */
+async function findExistingConversation(
+  uid1: string,
+  uid2: string,
+): Promise<string | null> {
+  try {
+    const q = query(
+      collection(db, 'conversations'),
+      where('participants', 'array-contains', uid1),
+    );
+    const snap = await getDocs(q);
+    for (const d of snap.docs) {
+      const parts = d.data().participants as string[] | undefined;
+      if (Array.isArray(parts) && parts.includes(uid1) && parts.includes(uid2)) {
+        return d.id;
+      }
+    }
+  } catch {
+    // Fall back to the canonical id if the lookup fails.
+  }
+  return null;
+}
+
+/**
+ * Resolve the conversation id to use between two users: the canonical (`|`)
+ * id when it already exists, otherwise any legacy `_`-scheme conversation.
+ */
+export async function resolveConversationId(uid1: string, uid2: string): Promise<string> {
+  const canonical = getConversationId(uid1, uid2);
+  const legacy = await findExistingConversation(uid1, uid2);
+  return legacy ?? canonical;
 }
 
 // ── Users ─────────────────────────────────────────────────
@@ -43,18 +93,57 @@ export async function getAllUsers(): Promise<User[]> {
 }
 
 export async function searchUsers(searchTerm: string): Promise<User[]> {
-  if (!searchTerm.trim()) return [];
+  const term = searchTerm.trim();
+  if (!term) return [];
+  const lower = term.toLowerCase();
+  // Phone numbers are matched on their normalized digit form so `+91 98765 43210`
+  // still finds a user stored as `09876543210` (see utils/phone.ts).
+  const phoneTerm = normalizePhone(term);
   const usersRef = collection(db, 'users');
-  const q = query(
-    usersRef,
-    where('displayName', '>=', searchTerm),
-    where('displayName', '<=', searchTerm + '\uf8ff'),
-    limit(20),
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.docs
-    .map((d) => d.data() as User)
-    .filter((u) => u.uid !== auth.currentUser?.uid);
+  const currentUid = auth.currentUser?.uid;
+
+  // Fast indexed prefix queries plus a broad un-indexed fetch. Results are
+  // merged and re-filtered case-insensitively so typing "john" still finds
+  // "John" and "john@example.com". Every query is caught individually so one
+  // failure (e.g. a missing index) never blanks the whole search.
+  const queries = [
+    query(usersRef, where('displayName', '>=', term), where('displayName', '<=', term + '\uf8ff'), limit(50)),
+    query(usersRef, where('email', '>=', term), where('email', '<=', term + '\uf8ff'), limit(50)),
+    query(usersRef, limit(200)),
+  ];
+
+  const snapshots = await Promise.all(queries.map((q) => getDocs(q).catch(() => null)));
+  const byUid = new Map<string, User>();
+  snapshots.forEach((snap) => {
+    if (!snap) return;
+    snap.docs.forEach((d) => {
+      const u = d.data() as User;
+      const name = (u.displayName || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      const uid = (u.uid || '').toLowerCase();
+      const phone = u.phone ? normalizePhone(u.phone) : '';
+      const matches =
+        name.includes(lower) ||
+        email.includes(lower) ||
+        (uid && uid.includes(lower)) ||
+        (phone && phone.includes(phoneTerm));
+      if (u.uid && u.uid !== currentUid && matches) {
+        byUid.set(u.uid, u);
+      }
+    });
+  });
+
+  const results = [...byUid.values()];
+  // Exact phone matches win, so dialing a full number surfaces that user first.
+  if (phoneTerm) {
+    results.sort((a, b) => {
+      const aExact = a.phone ? normalizePhone(a.phone) === phoneTerm : false;
+      const bExact = b.phone ? normalizePhone(b.phone) === phoneTerm : false;
+      if (aExact !== bExact) return aExact ? -1 : 1;
+      return 0;
+    });
+  }
+  return results.slice(0, 20);
 }
 
 export async function getUserById(uid: string): Promise<User | null> {
@@ -100,7 +189,13 @@ export async function createConversation(otherUserId: string): Promise<string> {
   const currentUser = auth.currentUser;
   if (!currentUser) throw new Error('Not authenticated');
 
-  const conversationId = getConversationId(currentUser.uid, otherUserId);
+  const canonicalId = getConversationId(currentUser.uid, otherUserId);
+
+  // Reuse an existing conversation (canonical `|` id, or a legacy `_` id that
+  // predates the id scheme change) so a pair never ends up with two chats.
+  const conversationId = await resolveConversationId(currentUser.uid, otherUserId);
+  if (conversationId !== canonicalId) return conversationId;
+
   const convRef = doc(db, 'conversations', conversationId);
   const convSnap = await getDoc(convRef);
 
@@ -112,6 +207,7 @@ export async function createConversation(otherUserId: string): Promise<string> {
     lastMessageTime: Date.now(),
     lastMessageSenderId: '',
     unreadCount: 0,
+    unreadByUser: {},
     pinned: false,
     createdAt: Date.now(),
   });
@@ -222,12 +318,18 @@ export async function sendMessage(
   const docRef = await addDoc(msgRef, msgData);
 
   try {
-    await updateDoc(doc(db, 'conversations', conversationId), {
+    const patch: Record<string, unknown> = {
       lastMessage: message.type === 'text' ? message.text : `📎 ${message.type}`,
       lastMessageTime: message.createdAt,
       lastMessageSenderId: message.senderId,
-      unreadCount: 0,
-    });
+      unreadCount: increment(1),
+    };
+    // Track unread per recipient so one user reading a chat never clears the
+    // other user's badge.
+    if (message.receiverId) {
+      patch[`unreadByUser.${message.receiverId}`] = increment(1);
+    }
+    await updateDoc(doc(db, 'conversations', conversationId), patch);
   } catch (err) {
     console.warn('Failed to update conversation metadata (message still saved):', err);
   }
@@ -277,17 +379,19 @@ export async function markMessagesAsRead(
   conversationId: string,
 ): Promise<void> {
   try {
+    const uid = auth.currentUser?.uid;
     const q = query(
       collection(db, 'messages', conversationId, 'messages'),
       where('read', '==', false),
     );
     const snapshot = await getDocs(q);
-    if (snapshot.empty) return;
     const batch = writeBatch(db);
     snapshot.docs.forEach((d) => {
       batch.update(d.ref, { read: true, delivered: true });
     });
-    batch.update(doc(db, 'conversations', conversationId), { unreadCount: 0 });
+    const convPatch: Record<string, unknown> = { unreadCount: 0 };
+    if (uid) convPatch[`unreadByUser.${uid}`] = 0;
+    batch.update(doc(db, 'conversations', conversationId), convPatch);
     await batch.commit();
   } catch (error) {
     console.error('markMessagesAsRead failed:', error);
@@ -412,6 +516,55 @@ export async function starMessage(
 }
 
 /**
+ * Toggle a reaction emoji on a message for the current user. Reactions are
+ * stored as a map of emoji -> uid array, updated atomically via a transaction
+ * so concurrent reacts never clobber each other.
+ */
+export async function toggleReaction(
+  conversationId: string,
+  messageId: string,
+  emoji: string,
+): Promise<void> {
+  const userId = auth.currentUser?.uid;
+  if (!userId) return;
+  const msgRef = doc(db, 'messages', conversationId, 'messages', messageId);
+
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(msgRef);
+    if (!snap.exists()) return;
+    const data = snap.data();
+    const reactions: Record<string, string[]> =
+      (data?.reactions as Record<string, string[]> | undefined) || {};
+
+    const current = reactions[emoji] || [];
+    const hasReacted = current.includes(userId);
+
+    if (hasReacted) {
+      const next = current.filter((id) => id !== userId);
+      if (next.length > 0) {
+        tx.update(msgRef, { [`reactions.${emoji}`]: next });
+      } else {
+        tx.update(msgRef, { [`reactions.${emoji}`]: [] });
+      }
+    } else {
+      tx.update(msgRef, { [`reactions.${emoji}`]: [...current, userId] });
+    }
+  });
+}
+
+/** Pin / unpin a message. */
+export async function pinMessage(
+  conversationId: string,
+  messageId: string,
+  pinned: boolean,
+): Promise<void> {
+  await updateDoc(
+    doc(db, 'messages', conversationId, 'messages', messageId),
+    { pinned },
+  );
+}
+
+/**
  * Copy a message from one conversation to another.
  * Creates a forwarded copy preserving media, type, and metadata.
  */
@@ -519,6 +672,7 @@ export async function clearChat(conversationId: string): Promise<void> {
         lastMessageTime: Date.now(),
         lastMessageSenderId: '',
         unreadCount: 0,
+        unreadByUser: {},
       });
     }
     await batch.commit();
@@ -529,6 +683,7 @@ export async function clearChat(conversationId: string): Promise<void> {
       lastMessageTime: Date.now(),
       lastMessageSenderId: '',
       unreadCount: 0,
+      unreadByUser: {},
     });
   }
 }
@@ -550,7 +705,7 @@ export async function toggleArchiveConversation(
 export async function blockUser(userId: string): Promise<void> {
   const currentUser = auth.currentUser;
   if (!currentUser) return;
-  const convId = getConversationId(currentUser.uid, userId);
+  const convId = await resolveConversationId(currentUser.uid, userId);
   await Promise.all([
     setDoc(doc(db, 'blocked', currentUser.uid), { blockedUsers: arrayUnion(userId) }, { merge: true }),
     updateDoc(doc(db, 'conversations', convId), { blocked: true }).catch(() => {}),
@@ -560,7 +715,7 @@ export async function blockUser(userId: string): Promise<void> {
 export async function unblockUser(userId: string): Promise<void> {
   const currentUser = auth.currentUser;
   if (!currentUser) return;
-  const convId = getConversationId(currentUser.uid, userId);
+  const convId = await resolveConversationId(currentUser.uid, userId);
   await Promise.all([
     setDoc(doc(db, 'blocked', currentUser.uid), { blockedUsers: arrayRemove(userId) }, { merge: true }),
     updateDoc(doc(db, 'conversations', convId), { blocked: false }).catch(() => {}),
@@ -592,6 +747,26 @@ export async function getStarredMessages(conversationId: string): Promise<Messag
   );
   const snapshot = await getDocs(q);
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Message);
+}
+
+/**
+ * Fetch every message in a conversation (ascending). Used by the
+ * Media / Files / Links browser in the chat menu.
+ */
+export async function getConversationMessages(conversationId: string): Promise<Message[]> {
+  const q = query(
+    collection(db, 'messages', conversationId, 'messages'),
+    orderBy('createdAt', 'asc'),
+  );
+  const snapshot = await getDocs(q);
+  const currentUid = auth.currentUser?.uid;
+  return snapshot.docs
+    .map((d) => ({ id: d.id, ...d.data() }) as Message)
+    .filter((m) => {
+      if (m.deletedForEveryone) return false;
+      if (m.deleted && m.deletedBy && currentUid && m.deletedBy.includes(currentUid)) return false;
+      return true;
+    });
 }
 
 export async function exportChat(conversationId: string): Promise<string> {

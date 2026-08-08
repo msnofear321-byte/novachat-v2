@@ -328,8 +328,21 @@ export async function startCall(
     console.warn('[Call] ICE candidate error:', (event as RTCPeerConnectionIceErrorEvent).errorText);
   };
 
-  const iceUnsub = subscribeIceCandidates(peerConnection, callId, 'caller');
+  const iceUnsub = subscribeIceCandidates(peerConnection, callId, 'receiver');
   iceCandidateUnsubs.push(iceUnsub);
+
+  callUnsub = onSnapshot(getCallRef(callId), (snap) => {
+    const data = snap.data();
+    if (!data?.answer || !peerConnection) return;
+    if (peerConnection.signalingState !== 'have-local-offer') return;
+    peerConnection
+      .setRemoteDescription(new RTCSessionDescription(data.answer))
+      .then(() => {
+        remoteDescSet = true;
+        return addPendingCandidates(peerConnection);
+      })
+      .catch((err) => console.warn('[Call] Failed to apply remote answer:', err));
+  });
 
   peerConnection.onconnectionstatechange = () => {
     const state = peerConnection?.connectionState;
@@ -503,7 +516,7 @@ export async function answerCall(
     console.warn('[Call] ICE candidate error:', (event as RTCPeerConnectionIceErrorEvent).errorText);
   };
 
-  const iceUnsub = subscribeIceCandidates(peerConnection, callId, 'receiver');
+  const iceUnsub = subscribeIceCandidates(peerConnection, callId, 'caller');
   iceCandidateUnsubs.push(iceUnsub);
 
   if (peerConnection.signalingState !== 'stable') {

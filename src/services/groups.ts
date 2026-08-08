@@ -1,6 +1,7 @@
 import {
-  collection, doc, setDoc, getDoc, getDocs, updateDoc,
+  collection, doc, setDoc, getDoc, getDocs, updateDoc, addDoc,
   query, where, orderBy, onSnapshot, arrayUnion, arrayRemove,
+  writeBatch, increment,
   type Unsubscribe,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
@@ -18,6 +19,23 @@ export interface Group {
   lastMessageTime: number;
 }
 
+/**
+ * Groups are stored in the `groups` collection and ALSO mirrored into the
+ * `conversations` collection (same doc id) so the chat list — which only
+ * subscribes to `conversations` — shows groups alongside 1:1 chats with no
+ * schema changes. 1:1 conversations keep their existing `uid1_uid2` ids.
+ */
+function groupConversationRef(groupId: string) {
+  return doc(db, 'conversations', groupId);
+}
+
+async function syncGroupConversation(
+  groupId: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  await setDoc(groupConversationRef(groupId), data, { merge: true }).catch(() => {});
+}
+
 export async function createGroup(
   name: string,
   memberIds: string[],
@@ -27,8 +45,9 @@ export async function createGroup(
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
 
-  const groupId = `group_${user.uid}_${Date.now()}`;
+  const groupId = `group_${user.uid}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const allMembers = [...new Set([user.uid, ...memberIds])];
+  const now = Date.now();
 
   await setDoc(doc(db, 'groups', groupId), {
     name,
@@ -37,9 +56,22 @@ export async function createGroup(
     members: allMembers,
     admins: [user.uid],
     createdBy: user.uid,
-    createdAt: Date.now(),
+    createdAt: now,
     lastMessage: '',
-    lastMessageTime: Date.now(),
+    lastMessageTime: now,
+  });
+
+  await syncGroupConversation(groupId, {
+    participants: allMembers,
+    name,
+    type: 'group',
+    lastMessage: '',
+    lastMessageTime: now,
+    lastMessageSenderId: '',
+    unreadCount: 0,
+    unreadByUser: {},
+    pinned: false,
+    createdAt: now,
   });
 
   return groupId;
@@ -63,6 +95,15 @@ export function subscribeToUserGroups(
   });
 }
 
+export function subscribeToGroup(
+  groupId: string,
+  callback: (group: Group | null) => void,
+): Unsubscribe {
+  return onSnapshot(doc(db, 'groups', groupId), (snap) => {
+    callback(snap.exists() ? ({ id: snap.id, ...snap.data() } as Group) : null);
+  });
+}
+
 export async function getGroup(groupId: string): Promise<Group | null> {
   const snap = await getDoc(doc(db, 'groups', groupId));
   return snap.exists() ? ({ id: snap.id, ...snap.data() } as Group) : null;
@@ -74,6 +115,9 @@ export async function addMembersToGroup(
 ): Promise<void> {
   await updateDoc(doc(db, 'groups', groupId), {
     members: arrayUnion(...memberIds),
+  });
+  await syncGroupConversation(groupId, {
+    participants: arrayUnion(...memberIds),
   });
 }
 
@@ -95,6 +139,9 @@ export async function removeMemberFromGroup(
   await updateDoc(doc(db, 'groups', groupId), {
     members: arrayRemove(memberId),
     admins: arrayRemove(memberId),
+  });
+  await syncGroupConversation(groupId, {
+    participants: arrayRemove(memberId),
   });
 }
 
@@ -125,9 +172,10 @@ export async function updateGroup(
 
 export async function deleteGroup(groupId: string): Promise<void> {
   const msgsSnap = await getDocs(collection(db, 'groupMessages', groupId, 'messages'));
-  const batch = (await import('firebase/firestore')).writeBatch(db);
+  const batch = writeBatch(db);
   msgsSnap.docs.forEach((d) => batch.delete(d.ref));
   batch.delete(doc(db, 'groups', groupId));
+  batch.delete(doc(db, 'conversations', groupId));
   await batch.commit();
 }
 
@@ -154,14 +202,36 @@ export async function sendGroupMessage(
   };
   if (mediaURL) msgData.mediaURL = mediaURL;
 
-  const msgRef = await import('firebase/firestore').then((m) =>
-    m.addDoc(collection(db, 'groupMessages', groupId, 'messages'), msgData)
-  );
+  const msgRef = await addDoc(collection(db, 'groupMessages', groupId, 'messages'), msgData);
 
-  await updateDoc(doc(db, 'groups', groupId), {
-    lastMessage: type === 'text' ? text : `📎 ${type}`,
-    lastMessageTime: Date.now(),
+  const preview = type === 'text' ? text : `📎 ${type}`;
+  const ts = Date.now();
+
+  // Bump the unread counter for every member except the sender so group
+  // unread badges actually reflect new messages.
+  const groupSnap = await getDoc(doc(db, 'groups', groupId));
+  const members: string[] = groupSnap.exists()
+    ? ((groupSnap.data() as Group).members || [])
+    : [];
+  const convPatch: Record<string, unknown> = {
+    lastMessage: preview,
+    lastMessageTime: ts,
+    lastMessageSenderId: user.uid,
+    unreadCount: increment(1),
+  };
+  members.forEach((memberId) => {
+    if (memberId !== user.uid) {
+      convPatch[`unreadByUser.${memberId}`] = increment(1);
+    }
   });
+
+  await Promise.all([
+    updateDoc(doc(db, 'groups', groupId), {
+      lastMessage: preview,
+      lastMessageTime: ts,
+    }),
+    syncGroupConversation(groupId, convPatch),
+  ]);
 
   return msgRef.id;
 }

@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlineHeart, HiOutlineEye, HiOutlinePlus, HiOutlineTrash } from 'react-icons/hi2';
+import { HiOutlineHeart, HiOutlineEye, HiOutlinePlus, HiOutlineTrash, HiOutlinePencilSquare, HiOutlineSparkles } from 'react-icons/hi2';
 import { subscribeToStories, deleteStory, type Story } from '@/services/status';
+import { subscribeToMyNote, deleteMyNote, isNoteActive, formatExpiresIn, type ChatNote } from '@/services/tempNotes';
 import { useAuth } from '@/context/AuthContext';
 import UserAvatar from '@/components/UserAvatar';
 import StatusViewer from '@/components/StatusViewer';
 import StatusComposer from '@/components/StatusComposer';
+import NoteComposer from '@/components/NoteComposer';
 
 export default function StatusPage() {
   const { user } = useAuth();
@@ -14,6 +16,9 @@ export default function StatusPage() {
   const [viewingStories, setViewingStories] = useState<Story[]>([]);
   const [viewingIndex, setViewingIndex] = useState(0);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [noteComposerOpen, setNoteComposerOpen] = useState(false);
+  const [myNote, setMyNote] = useState<ChatNote | null>(null);
+  const [noteNow, setNoteNow] = useState(() => Date.now());
   const [undoToast, setUndoToast] = useState<{ story: Story; timer: ReturnType<typeof setTimeout> } | null>(null);
   const undoRef = useRef(undoToast);
   undoRef.current = undoToast;
@@ -21,6 +26,35 @@ export default function StatusPage() {
   useEffect(() => {
     const unsub = subscribeToStories((s) => setStories(s));
     return unsub;
+  }, []);
+
+  useEffect(() => {
+    const unsub = subscribeToMyNote((note) => setMyNote(note));
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNoteNow(Date.now());
+      // Best-effort cleanup: an expired own note must not linger in Firestore.
+      setMyNote((current) => {
+        if (current && !isNoteActive(current)) {
+          deleteMyNote().catch(() => {});
+          return null;
+        }
+        return current;
+      });
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleDeleteNote = useCallback(async () => {
+    try {
+      await deleteMyNote();
+      setMyNote(null);
+    } catch (e) {
+      console.error('Failed to delete note:', e);
+    }
   }, []);
 
   useEffect(() => {
@@ -70,53 +104,107 @@ export default function StatusPage() {
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar bg-[var(--bg-primary)]">
-      <div className="max-w-[600px] mx-auto px-4 py-6">
+      <div className="max-w-[640px] mx-auto px-4 py-6 sm:py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-[22px] font-bold text-[var(--text-primary)]">Status</h1>
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
+          <h1 className="text-[26px] font-bold text-[var(--text-primary)]">Status</h1>
+        </div>
+
+        {/* My Note */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[15px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide">My Note</h3>
+          </div>
+
+          <AnimatePresence mode="popLayout" initial={false}>
+            {myNote && isNoteActive(myNote, noteNow) ? (
+              <motion.div
+                key="note"
+                layout
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                className="premium-card p-4 flex items-center gap-3.5"
+              >
+                <div className="w-11 h-11 rounded-[13px] bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-secondary)] flex items-center justify-center flex-shrink-0 shadow-[var(--accent-shadow)]">
+                  <HiOutlineSparkles className="w-[22px] h-[22px] text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[15px] font-medium text-[var(--text-primary)] truncate">{myNote.text}</p>
+                  <p className="text-[12px] text-[var(--text-muted)]">expires in {formatExpiresIn(myNote.expiresAt, noteNow)}</p>
+                </div>
+                <motion.button whileTap={{ scale: 0.9 }} onClick={() => setNoteComposerOpen(true)}
+                  aria-label="Edit note"
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--accent-primary)] hover:bg-[var(--accent-glow)] transition-all flex-shrink-0">
+                  <HiOutlinePencilSquare className="w-5 h-5" />
+                </motion.button>
+                <motion.button whileTap={{ scale: 0.85 }} onClick={handleDeleteNote}
+                  aria-label="Delete note"
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-all flex-shrink-0">
+                  <HiOutlineTrash className="w-5 h-5" />
+                </motion.button>
+              </motion.div>
+            ) : (
+              <motion.button
+                key="add"
+                layout
+                onClick={() => setNoteComposerOpen(true)}
+                className="premium-card premium-card-hover p-4 flex items-center gap-3.5 w-full text-left hover:bg-[var(--hover-bg)] transition-all"
+              >
+                <div className="w-11 h-11 rounded-[13px] bg-[var(--accent-primary)]/10 flex items-center justify-center flex-shrink-0">
+                  <HiOutlinePlus className="w-5 h-5 text-[var(--accent-primary)]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[15px] font-medium text-[var(--text-primary)]">Set a Note</p>
+                  <p className="text-[12px] text-[var(--text-muted)]">Share a short note that disappears after 24h</p>
+                </div>
+              </motion.button>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* My Status */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-[14px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide">My Status</h3>
+            <h3 className="text-[15px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide">My Status</h3>
             <motion.button whileTap={{ scale: 0.9 }} onClick={() => setComposerOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-primary)] text-white rounded-[10px] text-[12px] font-medium hover:opacity-90 transition-all">
-              <HiOutlinePlus className="w-3.5 h-3.5" />
+              className="flex items-center gap-1.5 px-4 py-2 bg-[var(--accent-primary)] text-white rounded-[12px] text-[13px] font-medium hover:opacity-90 transition-all">
+              <HiOutlinePlus className="w-4 h-4" />
               New
             </motion.button>
           </div>
 
           {myStories.length === 0 ? (
             <button onClick={() => setComposerOpen(true)}
-              className="premium-card p-4 flex items-center gap-3 w-full text-left hover:bg-[var(--hover-bg)] transition-all">
-              <div className="w-12 h-12 rounded-full bg-[var(--accent-primary)]/10 flex items-center justify-center">
-                <HiOutlinePlus className="w-5 h-5 text-[var(--accent-primary)]" />
+              className="premium-card premium-card-hover p-5 flex items-center gap-4 w-full text-left hover:bg-[var(--hover-bg)] transition-all">
+              <div className="w-14 h-14 rounded-full bg-[var(--accent-primary)]/10 flex items-center justify-center">
+                <HiOutlinePlus className="w-6 h-6 text-[var(--accent-primary)]" />
               </div>
               <div>
-                <p className="text-[14px] font-medium text-[var(--text-primary)]">Add Status</p>
-                <p className="text-[12px] text-[var(--text-muted)]">Tap to share a photo or video</p>
+                <p className="text-[16px] font-medium text-[var(--text-primary)]">Add Status</p>
+                <p className="text-[13px] text-[var(--text-muted)]">Tap to share a photo or video</p>
               </div>
             </button>
           ) : (
             <div className="premium-card overflow-hidden">
               <button onClick={() => openViewer(groupedMine[user!.uid], 0)}
-                className="w-full flex items-center gap-3 p-3 hover:bg-[var(--hover-bg)] transition-all text-left">
+                className="w-full flex items-center gap-4 p-4 hover:bg-[var(--hover-bg)] transition-all text-left">
                 <div className="relative">
-                  <UserAvatar photoURL={user?.photoURL ?? undefined} displayName={user?.displayName || '?'} size="md" />
+                  <UserAvatar photoURL={user?.photoURL ?? undefined} displayName={user?.displayName || '?'} size="lg" />
                   <div className="absolute inset-0 rounded-full border-2 border-[var(--accent-primary)]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-medium text-[var(--text-primary)]">My Status</p>
-                  <p className="text-[12px] text-[var(--text-muted)]">{myStories.length} {myStories.length === 1 ? 'update' : 'updates'}</p>
+                  <p className="text-[16px] font-medium text-[var(--text-primary)]">My Status</p>
+                  <p className="text-[13px] text-[var(--text-muted)]">{myStories.length} {myStories.length === 1 ? 'update' : 'updates'}</p>
                 </div>
-                <div className="flex items-center gap-3 text-[var(--text-muted)]">
-                  <span className="flex items-center gap-1 text-[12px]">
-                    <HiOutlineEye className="w-4 h-4" />
+                <div className="flex items-center gap-4 text-[var(--text-muted)]">
+                  <span className="flex items-center gap-1.5 text-[13px]">
+                    <HiOutlineEye className="w-4.5 h-4.5" />
                     {myStories.reduce((sum, s) => sum + (s.seenBy?.length || 0), 0)}
                   </span>
-                  <span className="flex items-center gap-1 text-[12px]">
-                    <HiOutlineHeart className="w-4 h-4" />
+                  <span className="flex items-center gap-1.5 text-[13px]">
+                    <HiOutlineHeart className="w-4.5 h-4.5" />
                     {myStories.reduce((sum, s) => sum + (s.likes?.length || 0), 0)}
                   </span>
                 </div>
@@ -125,9 +213,9 @@ export default function StatusPage() {
               {/* My individual stories with delete */}
               <div className="border-t border-[var(--border-primary)] divide-y divide-[var(--border-primary)]">
                 {myStories.map((story) => (
-                  <div key={story.id} className="flex items-center gap-3 px-3 py-2">
-                    <button onClick={() => openViewer(myStories, myStories.indexOf(story))} className="flex items-center gap-3 flex-1 min-w-0 text-left">
-                      <div className="w-10 h-10 rounded-[10px] overflow-hidden bg-[var(--bg-input)] shrink-0">
+                  <div key={story.id} className="flex items-center gap-3.5 px-4 py-2.5">
+                    <button onClick={() => openViewer(myStories, myStories.indexOf(story))} className="flex items-center gap-3.5 flex-1 min-w-0 text-left">
+                      <div className="w-12 h-12 rounded-[12px] overflow-hidden bg-[var(--bg-input)] shrink-0">
                         {story.type === 'image' ? (
                           <img src={story.mediaURL} className="w-full h-full object-cover" alt="" />
                         ) : (
@@ -135,13 +223,13 @@ export default function StatusPage() {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[13px] text-[var(--text-primary)] truncate">{story.text || story.type}</p>
-                        <p className="text-[11px] text-[var(--text-muted)]">{new Date(story.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                        <p className="text-[14px] text-[var(--text-primary)] truncate">{story.text || story.type}</p>
+                        <p className="text-[12px] text-[var(--text-muted)]">{new Date(story.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                       </div>
                     </button>
                     <motion.button whileTap={{ scale: 0.85 }} onClick={() => handleDeleteStory(story)}
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-all">
-                      <HiOutlineTrash className="w-4 h-4" />
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-all">
+                      <HiOutlineTrash className="w-4.5 h-4.5" />
                     </motion.button>
                   </div>
                 ))}
@@ -152,10 +240,10 @@ export default function StatusPage() {
 
         {/* Recent Updates */}
         <div>
-          <h3 className="text-[14px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-3">Recent Updates</h3>
+          <h3 className="text-[15px] font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-3">Recent Updates</h3>
 
           {Object.keys(groupedOthers).length === 0 ? (
-            <div className="premium-card p-8 text-center">
+            <div className="premium-card p-10 text-center">
               <p className="text-[var(--text-muted)] text-[14px]">No status updates yet</p>
               <p className="text-[var(--text-muted)] text-[12px] mt-1">When friends post updates, they'll appear here</p>
             </div>
@@ -168,29 +256,29 @@ export default function StatusPage() {
                 const hasUnseen = userStories.some((s) => !s.seenBy?.includes(user?.uid || ''));
 
                 return (
-                  <div key={userId} className="flex items-center gap-3 p-3 hover:bg-[var(--hover-bg)] transition-all">
-                    <button onClick={() => openViewer(userStories, 0)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                  <div key={userId} className="flex items-center gap-4 p-4 hover:bg-[var(--hover-bg)] transition-all">
+                    <button onClick={() => openViewer(userStories, 0)} className="flex items-center gap-4 flex-1 min-w-0 text-left">
                       <div className="relative">
-                        <UserAvatar photoURL={first.userPhoto} displayName={first.userName} size="md" />
+                        <UserAvatar photoURL={first.userPhoto} displayName={first.userName} size="lg" />
                         {hasUnseen && (
                           <div className="absolute inset-0 rounded-full border-2 border-[var(--accent-primary)]" />
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[14px] font-medium text-[var(--text-primary)] truncate">{first.userName}</p>
-                        <p className="text-[12px] text-[var(--text-muted)]">
+                        <p className="text-[16px] font-medium text-[var(--text-primary)] truncate">{first.userName}</p>
+                        <p className="text-[13px] text-[var(--text-muted)]">
                           {userStories.length} {userStories.length === 1 ? 'update' : 'updates'} · {new Date(first.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
                     </button>
 
-                    <div className="flex items-center gap-1">
-                      <span className="flex items-center gap-1 text-[12px] text-[var(--text-muted)] px-1.5 py-1">
-                        <HiOutlineEye className="w-3.5 h-3.5" />
+                    <div className="flex items-center gap-1.5">
+                      <span className="flex items-center gap-1.5 text-[13px] text-[var(--text-muted)] px-1.5 py-1">
+                        <HiOutlineEye className="w-4 h-4" />
                         {totalViews}
                       </span>
-                      <span className="flex items-center gap-1 text-[12px] text-[var(--text-muted)] px-1.5 py-1">
-                        <HiOutlineHeart className="w-3.5 h-3.5" />
+                      <span className="flex items-center gap-1.5 text-[13px] text-[var(--text-muted)] px-1.5 py-1">
+                        <HiOutlineHeart className="w-4 h-4" />
                         {totalLikes}
                       </span>
                     </div>
@@ -221,8 +309,8 @@ export default function StatusPage() {
                 alert('No views yet');
               }
             }}
-              className="w-full premium-card p-3 flex items-center justify-center gap-2 text-[var(--accent-primary)] text-[13px] font-medium hover:bg-[var(--hover-bg)] transition-all">
-              <HiOutlineEye className="w-4 h-4" />
+              className="w-full premium-card premium-card-hover p-4 flex items-center justify-center gap-2 text-[var(--accent-primary)] text-[14px] font-medium hover:bg-[var(--hover-bg)] transition-all">
+              <HiOutlineEye className="w-4.5 h-4.5" />
               See who viewed your status
             </button>
           </div>
@@ -252,6 +340,14 @@ export default function StatusPage() {
 
       {/* Status composer */}
       <StatusComposer isOpen={composerOpen} onClose={() => setComposerOpen(false)} onUploaded={() => setComposerOpen(false)} />
+
+      {/* Note composer */}
+      <NoteComposer
+        isOpen={noteComposerOpen}
+        onClose={() => setNoteComposerOpen(false)}
+        initialText={myNote?.text ?? ''}
+        onSaved={() => setNoteComposerOpen(false)}
+      />
     </div>
   );
 }

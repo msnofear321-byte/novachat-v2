@@ -22,10 +22,16 @@ export default function StatusViewer({ stories, initialIndex = 0, onClose }: Sta
   const [replyText, setReplyText] = useState('');
   const [showReply, setShowReply] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const seenRef = useRef<Set<string>>(new Set());
   const videoRef = useRef<HTMLVideoElement>(null);
   const durationRef = useRef(IMAGE_DURATION);
+  const pointerStartX = useRef<number | null>(null);
+  const pointerStartY = useRef<number | null>(null);
+  const isSwipingRef = useRef(false);
+  const suppressClickRef = useRef(false);
   const story = stories[currentIndex];
 
   const goNext = useCallback(() => {
@@ -81,7 +87,7 @@ export default function StatusViewer({ stories, initialIndex = 0, onClose }: Sta
 
   useEffect(() => {
     if (!story) return;
-    if (paused) {
+    if (paused || dragging) {
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = undefined;
@@ -114,16 +120,16 @@ export default function StatusViewer({ stories, initialIndex = 0, onClose }: Sta
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paused]);
+  }, [paused, dragging]);
 
   useEffect(() => {
     if (!story || story.type !== 'video' || !videoRef.current) return;
-    if (paused) {
+    if (paused || dragging) {
       videoRef.current.pause();
     } else {
       videoRef.current.play().catch(() => {});
     }
-  }, [paused, story?.id, story?.type]);
+  }, [paused, dragging, story?.id, story?.type]);
 
   useEffect(() => {
     if (!story || story.type !== 'video' || !videoRef.current) return;
@@ -139,9 +145,49 @@ export default function StatusViewer({ stories, initialIndex = 0, onClose }: Sta
   }
 
   function handleClickZone(direction: 'prev' | 'next' | 'pause') {
+    if (isSwipingRef.current || suppressClickRef.current) return;
     if (direction === 'prev') goPrev();
     else if (direction === 'next') goNext();
     else setPaused((p) => !p);
+  }
+
+  function handlePointerDown(e: React.PointerEvent) {
+    pointerStartX.current = e.clientX;
+    pointerStartY.current = e.clientY;
+    isSwipingRef.current = false;
+  }
+
+  function handlePointerMove(e: React.PointerEvent) {
+    if (pointerStartX.current === null || pointerStartY.current === null) return;
+    const dx = e.clientX - pointerStartX.current;
+    const dy = e.clientY - pointerStartY.current;
+    if (!isSwipingRef.current && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+      if (Math.abs(dx) > Math.abs(dy)) {
+        isSwipingRef.current = true;
+        setDragging(true);
+      } else {
+        pointerStartX.current = null;
+        pointerStartY.current = null;
+      }
+    }
+    if (isSwipingRef.current) setDragOffset(dx);
+  }
+
+  function handlePointerEnd(e: React.PointerEvent) {
+    const startX = pointerStartX.current;
+    pointerStartX.current = null;
+    pointerStartY.current = null;
+    setDragging(false);
+    setDragOffset(0);
+    if (!isSwipingRef.current) return;
+    isSwipingRef.current = false;
+    const dx = e.clientX - (startX ?? e.clientX);
+    if (Math.abs(dx) > 60) {
+      if (dx < 0) goNext();
+      else goPrev();
+      suppressClickRef.current = true;
+      setTimeout(() => { suppressClickRef.current = false; }, 250);
+    }
   }
 
   if (!story) return null;
@@ -149,7 +195,12 @@ export default function StatusViewer({ stories, initialIndex = 0, onClose }: Sta
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[90] bg-black flex items-center justify-center"
+      style={{ touchAction: 'pan-y' }}
       onClick={(e) => e.stopPropagation()}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerEnd}
+      onPointerCancel={handlePointerEnd}
     >
       {/* Progress bars */}
       <div className="absolute top-0 left-0 right-0 z-20 flex gap-1 px-3 pt-3">
@@ -177,13 +228,27 @@ export default function StatusViewer({ stories, initialIndex = 0, onClose }: Sta
       </div>
 
       {/* Media */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        {story.type === 'image' ? (
-          <img src={story.mediaURL} className="w-full h-full object-cover" alt="" />
-        ) : (
-          <video ref={videoRef} src={story.mediaURL} onLoadedMetadata={handleVideoMetadata} playsInline muted className="w-full h-full object-cover" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/30" />
+      <div
+        className="absolute inset-0 flex items-center justify-center"
+        style={{
+          transform: `translateX(${dragOffset}px)`,
+          transition: dragging ? 'none' : 'transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)',
+        }}
+      >
+        <motion.div
+          key={story.id}
+          initial={{ opacity: 0, scale: 1.03 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full h-full"
+        >
+          {story.type === 'image' ? (
+            <img src={story.mediaURL} className="w-full h-full object-cover" alt="" />
+          ) : (
+            <video ref={videoRef} src={story.mediaURL} onLoadedMetadata={handleVideoMetadata} playsInline muted className="w-full h-full object-cover" />
+          )}
+        </motion.div>
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/30 pointer-events-none" />
       </div>
 
       {/* Text overlay */}

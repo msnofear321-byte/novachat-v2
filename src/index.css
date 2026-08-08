@@ -24,306 +24,306 @@ html, body, #root {
 
 /* ── Dark Theme (default) ────────────────────────── */
 :root, [data-theme="dark"] {
-  --bg-primary: #050505;
-  --bg-secondary: #0d0d12;
-  --bg-tertiary: #15151e;
-  --bg-card: rgba(22, 22, 34, 0.72);
-  --bg-glass: rgba(22, 22, 34, 0.55);
-  --bg-input: rgba(255, 255, 255, 0.06);
-  --bg-input-focus: rgba(255, 255, 255, 0.09);
+  --bg-primary: #0B0D12;
+  --bg-secondary: #12151C;
+  --bg-tertiary: #1A1E28;
+  --bg-card: rgba(24, 28, 38, 0.85);
+  --bg-glass: rgba(20, 23, 32, 0.6);
+  --bg-input: rgba(255, 255, 255, 0.055);
+  --bg-input-focus: rgba(255, 255, 255, 0.085);
   --border-primary: rgba(255, 255, 255, 0.08);
-  --border-secondary: rgba(255, 255, 255, 0.04);
-  --border-accent: rgba(124, 58, 237, 0.4);
-  --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
-  --text-inverse: #050505;
-  --accent-primary: #7C3AED;
-  --accent-secondary: #A855F7;
-  --accent-tertiary: #C084FC;
-  --accent-glow: rgba(124, 58, 237, 0.3);
-  --accent-glow-strong: rgba(124, 58, 237, 0.5);
-  --accent-gradient-end: #5B21B6;
-  --accent-shadow: 0 2px 16px rgba(124, 58, 237, 0.3);
-  --accent-shadow-lg: 0 4px 20px rgba(124, 58, 237, 0.35);
-  --bubble-own: linear-gradient(135deg, #7C3AED, #6D28D9);
-  --bubble-own-solid: #7C3AED;
-  --bubble-other: rgba(255, 255, 255, 0.06);
+  --border-secondary: rgba(255, 255, 255, 0.05);
+  --border-accent: rgba(139, 92, 246, 0.45);
+  --text-primary: #F4F6FB;
+  --text-secondary: #9AA3B5;
+  --text-muted: #6B7385;
+  --text-inverse: #0B0D12;
+  --accent-primary: #8B5CF6;
+  --accent-secondary: #A78BFA;
+  --accent-tertiary: #C4B5FD;
+  --accent-glow: rgba(139, 92, 246, 0.18);
+  --accent-glow-strong: rgba(139, 92, 246, 0.34);
+  --accent-gradient-end: #6D28D9;
+  --accent-shadow: 0 2px 14px rgba(139, 92, 246, 0.22);
+  --accent-shadow-lg: 0 4px 20px rgba(139, 92, 246, 0.28);
+  --bubble-own: linear-gradient(135deg, #8B5CF6, #6D28D9);
+  --bubble-own-solid: #8B5CF6;
+  --bubble-other: rgba(255, 255, 255, 0.055);
   --bubble-other-border: rgba(255, 255, 255, 0.08);
   --hover-bg: rgba(255, 255, 255, 0.05);
-  --hover-bg-strong: rgba(255, 255, 255, 0.08);
+  --hover-bg-strong: rgba(255, 255, 255, 0.085);
   --danger: #EF4444;
   --danger-bg: rgba(239, 68, 68, 0.12);
   --success: #22C55E;
   --success-bg: rgba(34, 197, 94, 0.12);
   --warning: #F59E0B;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.6);
-  --shadow-glow: 0 0 20px rgba(124, 58, 237, 0.2);
-  --bg-chat: #050505;
-  --bg-sidebar: #0a0a0f;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.36);
+  --shadow-xl: 0 12px 44px rgba(0, 0, 0, 0.45);
+  --shadow-glow: 0 0 16px rgba(139, 92, 246, 0.12);
+  --bg-chat: #0B0D12;
+  --bg-sidebar: #0E1016;
   --accent-star: #F59E0B;
-  --accent-read: #60A5FA;
-  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
-  --scrollbar-hover: rgba(255, 255, 255, 0.18);
-  --bg-message-other: rgba(255, 255, 255, 0.06);
+  --accent-read: #34D399;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.12);
+  --scrollbar-hover: rgba(255, 255, 255, 0.2);
+  --bg-message-other: rgba(255, 255, 255, 0.055);
   background-color: var(--bg-primary);
   color: var(--text-primary);
 }
 
 /* ── Light Theme ─────────────────────────────────── */
 [data-theme="light"] {
-  --bg-primary: #F8F9FC;
+  --bg-primary: #F4F5F9;
   --bg-secondary: #FFFFFF;
-  --bg-tertiary: #F1F3F9;
-  --bg-card: rgba(255, 255, 255, 0.85);
-  --bg-glass: rgba(255, 255, 255, 0.7);
-  --bg-input: rgba(0, 0, 0, 0.04);
-  --bg-input-focus: rgba(0, 0, 0, 0.06);
-  --border-primary: rgba(0, 0, 0, 0.08);
-  --border-secondary: rgba(0, 0, 0, 0.04);
-  --border-accent: rgba(124, 58, 237, 0.3);
-  --text-primary: #0F172A;
-  --text-secondary: #64748B;
-  --text-muted: #94A3B8;
+  --bg-tertiary: #ECEEF4;
+  --bg-card: rgba(255, 255, 255, 0.92);
+  --bg-glass: rgba(255, 255, 255, 0.75);
+  --bg-input: rgba(17, 20, 30, 0.045);
+  --bg-input-focus: rgba(17, 20, 30, 0.07);
+  --border-primary: rgba(17, 20, 30, 0.09);
+  --border-secondary: rgba(17, 20, 30, 0.05);
+  --border-accent: rgba(139, 92, 246, 0.4);
+  --text-primary: #11141C;
+  --text-secondary: #5B6472;
+  --text-muted: #8A93A3;
   --text-inverse: #F8FAFC;
   --accent-primary: #7C3AED;
-  --accent-secondary: #A855F7;
-  --accent-tertiary: #C084FC;
-  --accent-glow: rgba(124, 58, 237, 0.12);
-  --accent-glow-strong: rgba(124, 58, 237, 0.2);
-  --accent-gradient-end: #5B21B6;
-  --accent-shadow: 0 2px 16px rgba(124, 58, 237, 0.25);
-  --accent-shadow-lg: 0 4px 20px rgba(124, 58, 237, 0.3);
+  --accent-secondary: #8B5CF6;
+  --accent-tertiary: #A78BFA;
+  --accent-glow: rgba(139, 92, 246, 0.1);
+  --accent-glow-strong: rgba(139, 92, 246, 0.2);
+  --accent-gradient-end: #6D28D9;
+  --accent-shadow: 0 2px 14px rgba(139, 92, 246, 0.16);
+  --accent-shadow-lg: 0 4px 20px rgba(139, 92, 246, 0.2);
   --bubble-own: linear-gradient(135deg, #7C3AED, #6D28D9);
   --bubble-own-solid: #7C3AED;
-  --bubble-other: rgba(0, 0, 0, 0.05);
-  --bubble-other-border: rgba(0, 0, 0, 0.08);
-  --hover-bg: rgba(0, 0, 0, 0.04);
-  --hover-bg-strong: rgba(0, 0, 0, 0.07);
+  --bubble-other: rgba(17, 20, 30, 0.045);
+  --bubble-other-border: rgba(17, 20, 30, 0.08);
+  --hover-bg: rgba(17, 20, 30, 0.04);
+  --hover-bg-strong: rgba(17, 20, 30, 0.07);
   --danger: #DC2626;
   --danger-bg: rgba(220, 38, 38, 0.08);
   --success: #16A34A;
   --success-bg: rgba(22, 163, 74, 0.08);
   --warning: #D97706;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.12);
-  --shadow-glow: 0 0 20px rgba(124, 58, 237, 0.1);
-  --bg-chat: #F8F9FC;
+  --shadow-sm: 0 1px 3px rgba(17, 20, 30, 0.06);
+  --shadow-md: 0 4px 12px rgba(17, 20, 30, 0.08);
+  --shadow-lg: 0 8px 28px rgba(17, 20, 30, 0.1);
+  --shadow-xl: 0 12px 44px rgba(17, 20, 30, 0.14);
+  --shadow-glow: 0 0 16px rgba(139, 92, 246, 0.08);
+  --bg-chat: #F4F5F9;
   --bg-sidebar: #FFFFFF;
   --accent-star: #D97706;
   --accent-read: #2563EB;
-  --scrollbar-thumb: rgba(0, 0, 0, 0.12);
-  --scrollbar-hover: rgba(0, 0, 0, 0.2);
-  --bg-message-other: rgba(0, 0, 0, 0.05);
+  --scrollbar-thumb: rgba(17, 20, 30, 0.14);
+  --scrollbar-hover: rgba(17, 20, 30, 0.22);
+  --bg-message-other: rgba(17, 20, 30, 0.045);
   background-color: var(--bg-primary);
   color: var(--text-primary);
 }
 
 /* ── Midnight Blue Theme ─────────────────────────── */
 [data-theme="midnight"] {
-  --bg-primary: #0A0E1A;
-  --bg-secondary: #101627;
-  --bg-tertiary: #1A2138;
-  --bg-card: rgba(18, 25, 48, 0.78);
-  --bg-glass: rgba(18, 25, 48, 0.6);
-  --bg-input: rgba(255, 255, 255, 0.06);
-  --bg-input-focus: rgba(255, 255, 255, 0.09);
-  --border-primary: rgba(100, 140, 220, 0.12);
-  --border-secondary: rgba(100, 140, 220, 0.06);
-  --border-accent: rgba(59, 130, 246, 0.4);
-  --text-primary: #E2E8F0;
-  --text-secondary: #94A3B8;
+  --bg-primary: #0B1220;
+  --bg-secondary: #111A2C;
+  --bg-tertiary: #192238;
+  --bg-card: rgba(18, 27, 46, 0.85);
+  --bg-glass: rgba(16, 24, 40, 0.6);
+  --bg-input: rgba(255, 255, 255, 0.055);
+  --bg-input-focus: rgba(255, 255, 255, 0.085);
+  --border-primary: rgba(120, 160, 235, 0.12);
+  --border-secondary: rgba(120, 160, 235, 0.07);
+  --border-accent: rgba(59, 130, 246, 0.45);
+  --text-primary: #E6EDF7;
+  --text-secondary: #93A5C0;
   --text-muted: #64748B;
-  --text-inverse: #0A0E1A;
+  --text-inverse: #0B1220;
   --accent-primary: #3B82F6;
   --accent-secondary: #60A5FA;
   --accent-tertiary: #93C5FD;
-  --accent-glow: rgba(59, 130, 246, 0.25);
-  --accent-glow-strong: rgba(59, 130, 246, 0.45);
+  --accent-glow: rgba(59, 130, 246, 0.18);
+  --accent-glow-strong: rgba(59, 130, 246, 0.34);
   --accent-gradient-end: #1D4ED8;
-  --accent-shadow: 0 2px 16px rgba(59, 130, 246, 0.3);
-  --accent-shadow-lg: 0 4px 20px rgba(59, 130, 246, 0.35);
-  --bubble-own: linear-gradient(135deg, #2563EB, #1D4ED8);
-  --bubble-own-solid: #2563EB;
-  --bubble-other: rgba(100, 140, 220, 0.08);
-  --bubble-other-border: rgba(100, 140, 220, 0.12);
-  --hover-bg: rgba(100, 140, 220, 0.06);
-  --hover-bg-strong: rgba(100, 140, 220, 0.1);
+  --accent-shadow: 0 2px 14px rgba(59, 130, 246, 0.22);
+  --accent-shadow-lg: 0 4px 20px rgba(59, 130, 246, 0.28);
+  --bubble-own: linear-gradient(135deg, #3B82F6, #1D4ED8);
+  --bubble-own-solid: #3B82F6;
+  --bubble-other: rgba(120, 160, 235, 0.07);
+  --bubble-other-border: rgba(120, 160, 235, 0.12);
+  --hover-bg: rgba(120, 160, 235, 0.06);
+  --hover-bg-strong: rgba(120, 160, 235, 0.1);
   --danger: #EF4444;
   --danger-bg: rgba(239, 68, 68, 0.12);
   --success: #22C55E;
   --success-bg: rgba(34, 197, 94, 0.12);
   --warning: #F59E0B;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.55);
-  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.6);
-  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.2);
-  --bg-chat: #0A0E1A;
-  --bg-sidebar: #0C1120;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.32);
+  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 12px 44px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 16px rgba(59, 130, 246, 0.12);
+  --bg-chat: #0B1220;
+  --bg-sidebar: #0D1526;
   --accent-star: #F59E0B;
   --accent-read: #60A5FA;
-  --scrollbar-thumb: rgba(100, 140, 220, 0.12);
-  --scrollbar-hover: rgba(100, 140, 220, 0.22);
-  --bg-message-other: rgba(100, 140, 220, 0.08);
+  --scrollbar-thumb: rgba(120, 160, 235, 0.12);
+  --scrollbar-hover: rgba(120, 160, 235, 0.22);
+  --bg-message-other: rgba(120, 160, 235, 0.07);
   background-color: var(--bg-primary);
   color: var(--text-primary);
 }
 
 /* ── Forest Theme ────────────────────────────────── */
 [data-theme="forest"] {
-  --bg-primary: #0A120D;
-  --bg-secondary: #111E15;
-  --bg-tertiary: #1A2B1E;
-  --bg-card: rgba(16, 32, 20, 0.78);
-  --bg-glass: rgba(16, 32, 20, 0.6);
-  --bg-input: rgba(255, 255, 255, 0.06);
-  --bg-input-focus: rgba(255, 255, 255, 0.09);
-  --border-primary: rgba(74, 180, 100, 0.12);
-  --border-secondary: rgba(74, 180, 100, 0.06);
-  --border-accent: rgba(22, 163, 74, 0.4);
-  --text-primary: #ECFDF5;
-  --text-secondary: #86EFAC;
-  --text-muted: #4ADE80;
-  --text-inverse: #0A120D;
-  --accent-primary: #16A34A;
-  --accent-secondary: #22C55E;
-  --accent-tertiary: #4ADE80;
-  --accent-glow: rgba(22, 163, 74, 0.25);
-  --accent-glow-strong: rgba(22, 163, 74, 0.45);
+  --bg-primary: #0A1510;
+  --bg-secondary: #101E17;
+  --bg-tertiary: #172B20;
+  --bg-card: rgba(17, 35, 25, 0.85);
+  --bg-glass: rgba(15, 30, 22, 0.6);
+  --bg-input: rgba(255, 255, 255, 0.055);
+  --bg-input-focus: rgba(255, 255, 255, 0.085);
+  --border-primary: rgba(90, 190, 125, 0.12);
+  --border-secondary: rgba(90, 190, 125, 0.07);
+  --border-accent: rgba(34, 197, 94, 0.45);
+  --text-primary: #EDF9F1;
+  --text-secondary: #A9CFB8;
+  --text-muted: #6E9A80;
+  --text-inverse: #0A1510;
+  --accent-primary: #22C55E;
+  --accent-secondary: #4ADE80;
+  --accent-tertiary: #86EFAC;
+  --accent-glow: rgba(34, 197, 94, 0.18);
+  --accent-glow-strong: rgba(34, 197, 94, 0.34);
   --accent-gradient-end: #15803D;
-  --accent-shadow: 0 2px 16px rgba(22, 163, 74, 0.3);
-  --accent-shadow-lg: 0 4px 20px rgba(22, 163, 74, 0.35);
-  --bubble-own: linear-gradient(135deg, #16A34A, #15803D);
-  --bubble-own-solid: #16A34A;
-  --bubble-other: rgba(74, 180, 100, 0.08);
-  --bubble-other-border: rgba(74, 180, 100, 0.12);
-  --hover-bg: rgba(74, 180, 100, 0.06);
-  --hover-bg-strong: rgba(74, 180, 100, 0.1);
+  --accent-shadow: 0 2px 14px rgba(34, 197, 94, 0.22);
+  --accent-shadow-lg: 0 4px 20px rgba(34, 197, 94, 0.28);
+  --bubble-own: linear-gradient(135deg, #22C55E, #15803D);
+  --bubble-own-solid: #22C55E;
+  --bubble-other: rgba(90, 190, 125, 0.07);
+  --bubble-other-border: rgba(90, 190, 125, 0.12);
+  --hover-bg: rgba(90, 190, 125, 0.06);
+  --hover-bg-strong: rgba(90, 190, 125, 0.1);
   --danger: #EF4444;
   --danger-bg: rgba(239, 68, 68, 0.12);
   --success: #22C55E;
   --success-bg: rgba(34, 197, 94, 0.12);
   --warning: #F59E0B;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.55);
-  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.6);
-  --shadow-glow: 0 0 20px rgba(22, 163, 74, 0.2);
-  --bg-chat: #0A120D;
-  --bg-sidebar: #0C150F;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.32);
+  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 12px 44px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 16px rgba(34, 197, 94, 0.12);
+  --bg-chat: #0A1510;
+  --bg-sidebar: #0C1812;
   --accent-star: #F59E0B;
   --accent-read: #4ADE80;
-  --scrollbar-thumb: rgba(74, 180, 100, 0.12);
-  --scrollbar-hover: rgba(74, 180, 100, 0.22);
-  --bg-message-other: rgba(74, 180, 100, 0.08);
+  --scrollbar-thumb: rgba(90, 190, 125, 0.12);
+  --scrollbar-hover: rgba(90, 190, 125, 0.22);
+  --bg-message-other: rgba(90, 190, 125, 0.07);
   background-color: var(--bg-primary);
   color: var(--text-primary);
 }
 
 /* ── Sunset Theme ────────────────────────────────── */
 [data-theme="sunset"] {
-  --bg-primary: #140D0A;
-  --bg-secondary: #1E1410;
-  --bg-tertiary: #2B1C15;
-  --bg-card: rgba(35, 22, 14, 0.78);
-  --bg-glass: rgba(35, 22, 14, 0.6);
-  --bg-input: rgba(255, 255, 255, 0.06);
-  --bg-input-focus: rgba(255, 255, 255, 0.09);
-  --border-primary: rgba(234, 150, 80, 0.12);
-  --border-secondary: rgba(234, 150, 80, 0.06);
-  --border-accent: rgba(234, 88, 12, 0.4);
-  --text-primary: #FFF7ED;
-  --text-secondary: #FDBA74;
-  --text-muted: #FB923C;
-  --text-inverse: #140D0A;
-  --accent-primary: #EA580C;
-  --accent-secondary: #F97316;
-  --accent-tertiary: #FB923C;
-  --accent-glow: rgba(234, 88, 12, 0.25);
-  --accent-glow-strong: rgba(234, 88, 12, 0.45);
+  --bg-primary: #16110D;
+  --bg-secondary: #211915;
+  --bg-tertiary: #2E241E;
+  --bg-card: rgba(40, 30, 22, 0.85);
+  --bg-glass: rgba(35, 27, 20, 0.6);
+  --bg-input: rgba(255, 255, 255, 0.055);
+  --bg-input-focus: rgba(255, 255, 255, 0.085);
+  --border-primary: rgba(235, 160, 105, 0.12);
+  --border-secondary: rgba(235, 160, 105, 0.07);
+  --border-accent: rgba(249, 115, 22, 0.45);
+  --text-primary: #FCF6F0;
+  --text-secondary: #C9A98E;
+  --text-muted: #8F7459;
+  --text-inverse: #16110D;
+  --accent-primary: #F97316;
+  --accent-secondary: #FB923C;
+  --accent-tertiary: #FDBA74;
+  --accent-glow: rgba(249, 115, 22, 0.18);
+  --accent-glow-strong: rgba(249, 115, 22, 0.34);
   --accent-gradient-end: #C2410C;
-  --accent-shadow: 0 2px 16px rgba(234, 88, 12, 0.3);
-  --accent-shadow-lg: 0 4px 20px rgba(234, 88, 12, 0.35);
-  --bubble-own: linear-gradient(135deg, #EA580C, #C2410C);
-  --bubble-own-solid: #EA580C;
-  --bubble-other: rgba(234, 150, 80, 0.08);
-  --bubble-other-border: rgba(234, 150, 80, 0.12);
-  --hover-bg: rgba(234, 150, 80, 0.06);
-  --hover-bg-strong: rgba(234, 150, 80, 0.1);
+  --accent-shadow: 0 2px 14px rgba(249, 115, 22, 0.22);
+  --accent-shadow-lg: 0 4px 20px rgba(249, 115, 22, 0.28);
+  --bubble-own: linear-gradient(135deg, #F97316, #C2410C);
+  --bubble-own-solid: #F97316;
+  --bubble-other: rgba(235, 160, 105, 0.07);
+  --bubble-other-border: rgba(235, 160, 105, 0.12);
+  --hover-bg: rgba(235, 160, 105, 0.06);
+  --hover-bg-strong: rgba(235, 160, 105, 0.1);
   --danger: #EF4444;
   --danger-bg: rgba(239, 68, 68, 0.12);
   --success: #22C55E;
   --success-bg: rgba(34, 197, 94, 0.12);
   --warning: #F59E0B;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.55);
-  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.6);
-  --shadow-glow: 0 0 20px rgba(234, 88, 12, 0.2);
-  --bg-chat: #140D0A;
-  --bg-sidebar: #110B08;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.32);
+  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 12px 44px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 16px rgba(249, 115, 22, 0.12);
+  --bg-chat: #16110D;
+  --bg-sidebar: #1A140F;
   --accent-star: #F59E0B;
   --accent-read: #FB923C;
-  --scrollbar-thumb: rgba(234, 150, 80, 0.12);
-  --scrollbar-hover: rgba(234, 150, 80, 0.22);
-  --bg-message-other: rgba(234, 150, 80, 0.08);
+  --scrollbar-thumb: rgba(235, 160, 105, 0.12);
+  --scrollbar-hover: rgba(235, 160, 105, 0.22);
+  --bg-message-other: rgba(235, 160, 105, 0.07);
   background-color: var(--bg-primary);
   color: var(--text-primary);
 }
 
 /* ── Rose Theme ──────────────────────────────────── */
 [data-theme="rose"] {
-  --bg-primary: #140A0E;
-  --bg-secondary: #1E1015;
-  --bg-tertiary: #2B1720;
-  --bg-card: rgba(32, 16, 24, 0.78);
-  --bg-glass: rgba(32, 16, 24, 0.6);
-  --bg-input: rgba(255, 255, 255, 0.06);
-  --bg-input-focus: rgba(255, 255, 255, 0.09);
-  --border-primary: rgba(244, 100, 140, 0.12);
-  --border-secondary: rgba(244, 100, 140, 0.06);
-  --border-accent: rgba(225, 29, 72, 0.4);
-  --text-primary: #FFF1F2;
-  --text-secondary: #FDA4AF;
-  --text-muted: #FB7185;
-  --text-inverse: #140A0E;
-  --accent-primary: #E11D48;
-  --accent-secondary: #F43F5E;
-  --accent-tertiary: #FB7185;
-  --accent-glow: rgba(225, 29, 72, 0.25);
-  --accent-glow-strong: rgba(225, 29, 72, 0.45);
+  --bg-primary: #170F13;
+  --bg-secondary: #221619;
+  --bg-tertiary: #2E1F23;
+  --bg-card: rgba(42, 26, 31, 0.85);
+  --bg-glass: rgba(37, 23, 27, 0.6);
+  --bg-input: rgba(255, 255, 255, 0.055);
+  --bg-input-focus: rgba(255, 255, 255, 0.085);
+  --border-primary: rgba(240, 130, 160, 0.12);
+  --border-secondary: rgba(240, 130, 160, 0.07);
+  --border-accent: rgba(244, 63, 94, 0.45);
+  --text-primary: #FDF3F5;
+  --text-secondary: #CF9AA6;
+  --text-muted: #93707A;
+  --text-inverse: #170F13;
+  --accent-primary: #F43F5E;
+  --accent-secondary: #FB7185;
+  --accent-tertiary: #FDA4AF;
+  --accent-glow: rgba(244, 63, 94, 0.18);
+  --accent-glow-strong: rgba(244, 63, 94, 0.34);
   --accent-gradient-end: #BE123C;
-  --accent-shadow: 0 2px 16px rgba(225, 29, 72, 0.3);
-  --accent-shadow-lg: 0 4px 20px rgba(225, 29, 72, 0.35);
-  --bubble-own: linear-gradient(135deg, #E11D48, #BE123C);
-  --bubble-own-solid: #E11D48;
-  --bubble-other: rgba(244, 100, 140, 0.08);
-  --bubble-other-border: rgba(244, 100, 140, 0.12);
-  --hover-bg: rgba(244, 100, 140, 0.06);
-  --hover-bg-strong: rgba(244, 100, 140, 0.1);
+  --accent-shadow: 0 2px 14px rgba(244, 63, 94, 0.22);
+  --accent-shadow-lg: 0 4px 20px rgba(244, 63, 94, 0.28);
+  --bubble-own: linear-gradient(135deg, #F43F5E, #BE123C);
+  --bubble-own-solid: #F43F5E;
+  --bubble-other: rgba(240, 130, 160, 0.07);
+  --bubble-other-border: rgba(240, 130, 160, 0.12);
+  --hover-bg: rgba(240, 130, 160, 0.06);
+  --hover-bg-strong: rgba(240, 130, 160, 0.1);
   --danger: #EF4444;
   --danger-bg: rgba(239, 68, 68, 0.12);
   --success: #22C55E;
   --success-bg: rgba(34, 197, 94, 0.12);
   --warning: #F59E0B;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.55);
-  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.6);
-  --shadow-glow: 0 0 20px rgba(225, 29, 72, 0.2);
-  --bg-chat: #140A0E;
-  --bg-sidebar: #11080B;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.32);
+  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 12px 44px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 16px rgba(244, 63, 94, 0.12);
+  --bg-chat: #170F13;
+  --bg-sidebar: #1A1215;
   --accent-star: #F59E0B;
   --accent-read: #FB7185;
-  --scrollbar-thumb: rgba(244, 100, 140, 0.12);
-  --scrollbar-hover: rgba(244, 100, 140, 0.22);
-  --bg-message-other: rgba(244, 100, 140, 0.08);
+  --scrollbar-thumb: rgba(240, 130, 160, 0.12);
+  --scrollbar-hover: rgba(240, 130, 160, 0.22);
+  --bg-message-other: rgba(240, 130, 160, 0.07);
   background-color: var(--bg-primary);
   color: var(--text-primary);
 }
@@ -349,7 +349,7 @@ input:-webkit-autofill:focus {
 
 /* ── Selection ───────────────────────────────────── */
 ::selection {
-  background-color: rgba(124, 58, 237, 0.3);
+  background-color: var(--accent-glow);
   color: var(--text-primary);
 }
 
@@ -374,24 +374,28 @@ input:-webkit-autofill:focus {
 /* ── Glassmorphism Utility ───────────────────────── */
 .glass {
   background: var(--bg-glass);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(14px) saturate(130%);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
   border: 1px solid var(--border-primary);
+  transform: translateZ(0);
 }
 
 .glass-strong {
   background: var(--bg-card);
-  backdrop-filter: blur(40px) saturate(200%);
-  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
   border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-md);
+  transform: translateZ(0);
 }
 
 .glass-premium {
   background: var(--bg-card);
-  backdrop-filter: blur(60px) saturate(200%);
-  -webkit-backdrop-filter: blur(60px) saturate(200%);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
   border: 1px solid var(--border-primary);
-  box-shadow: var(--shadow-xl), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transform: translateZ(0);
 }
 
 /* ── Animations ──────────────────────────────────── */
@@ -494,8 +498,8 @@ input:-webkit-autofill:focus {
 
 /* ── Auth Header Glow ─────────────────────────── */
 @keyframes header-glow {
-  0%, 100% { text-shadow: 0 0 20px rgba(124, 58, 237, 0.0); }
-  50% { text-shadow: 0 0 30px rgba(124, 58, 237, 0.25), 0 0 60px rgba(124, 58, 237, 0.1); }
+  0%, 100% { text-shadow: 0 0 20px var(--accent-glow); }
+  50% { text-shadow: 0 0 30px var(--accent-glow-strong), 0 0 60px var(--accent-glow); }
 }
 
 .auth-header-glow {
@@ -550,6 +554,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 
 .app-topnav {
@@ -609,6 +614,26 @@ button, input, textarea, select {
   overflow: hidden;
 }
 
+/* ── Fluid Typography (clamp) ─────────────────────── */
+/* Scale smoothly between small phones and large desktops without
+   hard breakpoints. Sizes stay within the same visual range as the
+   fixed px values they replace. */
+.text-fluid-brand {
+  font-size: clamp(1.125rem, 0.875rem + 1.2vw, 1.375rem);
+}
+
+.text-fluid-chat-title {
+  font-size: clamp(0.9375rem, 0.8125rem + 0.6vw, 1.0625rem);
+}
+
+.text-fluid-message {
+  font-size: clamp(0.875rem, 0.8125rem + 0.35vw, 0.9688rem);
+}
+
+.text-fluid-input {
+  font-size: clamp(0.875rem, 0.8125rem + 0.35vw, 0.9375rem);
+}
+
 /* ── Focus Ring ──────────────────────────────────── */
 .focus-ring {
   outline: none;
@@ -620,19 +645,19 @@ button, input, textarea, select {
 
 /* ── Premium Button Styles ───────────────────────── */
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-gradient-end));
   color: white;
   font-weight: 600;
-  border-radius: 16px;
+  border-radius: 14px;
   padding: 14px 24px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 20px var(--accent-glow);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--accent-shadow);
   position: relative;
   overflow: hidden;
 }
 
 .btn-primary:hover {
-  box-shadow: 0 6px 28px var(--accent-glow-strong);
+  box-shadow: var(--accent-shadow-lg);
   transform: translateY(-1px);
 }
 
@@ -650,20 +675,21 @@ button, input, textarea, select {
 /* ── Neon Glass Card (Auth) ─────────────────────── */
 .neon-glass {
   background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(124, 58, 237, 0.12);
+  border: 1px solid var(--border-accent);
   box-shadow:
-    0 0 24px rgba(124, 58, 237, 0.06),
-    0 0 64px rgba(124, 58, 237, 0.03),
+    0 0 24px var(--accent-glow),
+    0 0 64px var(--accent-glow),
     0 24px 64px rgba(0, 0, 0, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.035);
-  backdrop-filter: blur(48px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(130%);
+  transform: translateZ(0);
 }
 
 .neon-glass:hover {
-  border-color: rgba(124, 58, 237, 0.2);
+  border-color: var(--border-accent);
   box-shadow:
-    0 0 32px rgba(124, 58, 237, 0.1),
-    0 0 80px rgba(124, 58, 237, 0.05),
+    0 0 32px var(--accent-glow-strong),
+    0 0 80px var(--accent-glow),
     0 28px 72px rgba(0, 0, 0, 0.55),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
@@ -675,20 +701,20 @@ button, input, textarea, select {
   font-weight: 600;
   font-size: 15px;
   color: white;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.85), rgba(168, 85, 247, 0.85));
-  border: 1px solid rgba(124, 58, 237, 0.3);
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-gradient-end));
+  border: 1px solid var(--border-accent);
   box-shadow:
-    0 0 24px rgba(124, 58, 237, 0.2),
-    0 8px 32px rgba(124, 58, 237, 0.12);
+    0 0 24px var(--accent-glow),
+    0 8px 32px var(--accent-glow);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
 }
 
 .neon-btn:hover {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 1), rgba(168, 85, 247, 1));
+  background: linear-gradient(135deg, var(--accent-secondary), var(--accent-gradient-end));
   box-shadow:
-    0 0 32px rgba(124, 58, 237, 0.3),
-    0 12px 40px rgba(124, 58, 237, 0.18);
+    0 0 32px var(--accent-glow-strong),
+    0 12px 40px var(--accent-glow);
   transform: translateY(-1px);
 }
 
@@ -703,9 +729,16 @@ button, input, textarea, select {
   box-shadow: none;
 }
 
-/* ── Theme transition for all elements ───────────── */
+/* ── Theme transition for all elements ─────────────
+   NOTE: intentionally NOT applied to every element — a global `transition`
+   on `*` forces the browser to keep every node paintable/transitionable and
+   causes constant style/layout work while scrolling. Theme switches are fast
+   enough without it. */
 @layer base {
-  *, *::before, *::after {
+  .theme-transition,
+  .theme-transition *,
+  .theme-transition *::before,
+  .theme-transition *::after {
     transition-property: background-color, border-color, color, box-shadow;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 0.15s;
@@ -714,13 +747,21 @@ button, input, textarea, select {
 
 /* ── Message Highlight (scroll-to-reply) ────────── */
 @keyframes message-highlight {
-  0% { background-color: rgba(124, 58, 237, 0.25); box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.3); }
-  50% { background-color: rgba(124, 58, 237, 0.15); box-shadow: 0 0 16px 4px rgba(124, 58, 237, 0.15); }
+  0% { background-color: var(--accent-glow); box-shadow: 0 0 0 0 var(--accent-glow-strong); }
+  50% { background-color: var(--accent-glow-strong); box-shadow: 0 0 16px 4px var(--accent-glow); }
   100% { background-color: transparent; box-shadow: 0 0 0 0 transparent; }
 }
 
 .highlight-message {
   animation: message-highlight 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ── In-chat search highlight ───────────────────── */
+.highlight-search {
+  background: var(--accent-primary);
+  color: white;
+  border-radius: 3px;
+  padding: 0 1px;
 }
 
 /* ── Apple-style spring bounce ──────────────────── */
@@ -770,13 +811,12 @@ button, input, textarea, select {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 12px var(--accent-glow-strong), 0 2px 8px rgba(0,0,0,0.3);
-  animation: badge-pulse 2s ease-in-out infinite;
+  box-shadow: var(--accent-shadow);
 }
 
 @keyframes badge-pulse {
-  0%, 100% { box-shadow: 0 0 8px var(--accent-glow), 0 2px 8px rgba(0,0,0,0.3); }
-  50% { box-shadow: 0 0 16px var(--accent-glow-strong), 0 2px 12px rgba(0,0,0,0.4); }
+  0%, 100% { box-shadow: var(--accent-shadow); }
+  50% { box-shadow: var(--accent-shadow-lg); }
 }
 
 /* ── Typing Dots ────────────────────────────────── */
@@ -801,21 +841,50 @@ button, input, textarea, select {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
   30% { transform: translateY(-4px); opacity: 1; }
 }
-
 /* ── Premium Card ───────────────────────────────── */
 .premium-card {
   background: var(--bg-card);
-  backdrop-filter: blur(40px) saturate(200%);
-  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
   border: 1px solid var(--border-primary);
   border-radius: 20px;
-  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.04);
-  transition: all 0.2s ease;
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transform: translateZ(0);
 }
 
 .premium-card:hover {
   border-color: var(--border-accent);
-  box-shadow: var(--shadow-lg), 0 0 24px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.06);
+  box-shadow: var(--shadow-md), 0 0 20px var(--accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* ── Ultra-Smooth Interactions ──────────────────── */
+/* One shared premium easing curve + no tap flash across the whole app. */
+:root {
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+button,
+a,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  transition-timing-function: var(--ease-smooth);
+}
+
+/* Gentle card lift on desktop hover (never fires on touch devices). */
+@media (hover: hover) and (pointer: fine) {
+  .premium-card-hover {
+    transition:
+      transform 0.25s var(--ease-smooth),
+      box-shadow 0.25s var(--ease-smooth),
+      border-color 0.25s var(--ease-smooth),
+      background-color 0.2s var(--ease-smooth);
+    will-change: transform;
+  }
+
+  .premium-card-hover:hover {
+    transform: translateY(-2px);
+  }
 }
 
 /* ── Premium Section Header ─────────────────────── */
@@ -883,7 +952,7 @@ button, input, textarea, select {
   display: inline-block;
   width: 2px;
   height: 1em;
-  background: rgba(124, 58, 237, 0.8);
+  background: var(--accent-primary);
   margin-left: 2px;
   vertical-align: text-bottom;
   animation: blink-cursor 1s step-end infinite;
@@ -897,7 +966,7 @@ button, input, textarea, select {
 /* ── Google Button Hover Glow ─────────────────── */
 .google-btn:hover {
   box-shadow:
-    0 0 24px rgba(124, 58, 237, 0.12),
+    0 0 24px var(--accent-glow),
     0 8px 32px rgba(0, 0, 0, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
@@ -909,10 +978,10 @@ button, input, textarea, select {
 /* ── Premium Button Glow Pulse ────────────────── */
 @keyframes btn-glow-pulse {
   0%, 100% {
-    box-shadow: 0 0 24px rgba(124, 58, 237, 0.2), 0 8px 32px rgba(124, 58, 237, 0.12);
+    box-shadow: 0 0 24px var(--accent-glow), 0 8px 32px var(--accent-glow);
   }
   50% {
-    box-shadow: 0 0 32px rgba(124, 58, 237, 0.35), 0 12px 40px rgba(124, 58, 237, 0.2);
+    box-shadow: 0 0 32px var(--accent-glow-strong), 0 12px 40px var(--accent-glow);
   }
 }
 
@@ -922,7 +991,7 @@ button, input, textarea, select {
 
 .neon-btn:hover:not(:disabled) {
   animation: none;
-  box-shadow: 0 0 32px rgba(124, 58, 237, 0.35), 0 12px 40px rgba(124, 58, 237, 0.2);
+  box-shadow: 0 0 32px var(--accent-glow-strong), 0 12px 40px var(--accent-glow);
 }
 
 /* ── Smooth scroll for auth pages ─────────────── */
@@ -993,18 +1062,26 @@ button, input, textarea, select {
   }
 }
 
-/* ── Smooth scroll container for messages ──────── */
-.smooth-scroll {
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-  overscroll-behavior: contain;
-}
-
 /* ── Momentum scrolling for mobile ─────────────── */
 .momentum-scroll {
   -webkit-overflow-scrolling: touch;
   overflow-y: auto;
   overscroll-behavior-y: contain;
+}
+
+/* ── Performance helpers ───────────────────────── */
+/* Skip rendering/painting for offscreen list rows — massive win on long
+   message/conversation lists. `contain-intrinsic-size` reserves space so the
+   scrollbar doesn't jump while content is culled. */
+.content-visibility-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 64px;
+}
+
+.gpu-hint {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 /* ── Message input safe area ───────────────────── */
@@ -1041,3 +1118,27 @@ button, input, textarea, select {
     gap: 2px !important;
   }
 }
+
+/*  Composer textarea  */
+.composer-textarea {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+.composer-textarea::-webkit-scrollbar {
+  width: 3px;
+}
+.composer-textarea::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 10px;
+}
+.composer-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/*  Wrap long unbroken strings inside message bubbles  */
+.wrap-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+}
+

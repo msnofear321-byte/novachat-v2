@@ -3,19 +3,19 @@ import { db } from './firebase';
 import type { User } from '@/types';
 
 // ── Config ───────────────────────────────────────────────────
-// Always-online mode: the app never voluntarily marks the user offline (no
-// offline write on tab hide / page hide / network drop) and keeps sending
-// heartbeats even while the tab is in the background, so the user stays
-// "online" as long as the app is open. Flip to `false` to restore the old
-// "online only while focused and connected" behavior.
-export const ALWAYS_ONLINE = true;
+// Online-only mode: the user is marked online while the app is open, focused
+// and connected. Leaving the tab (hidden), closing the page or losing the
+// network writes offline immediately, so the green dot never stays on for
+// users who aren't actually in the app right now. Flip to `true` to restore
+// the "always online while the app is open, even in background" behavior.
+export const ALWAYS_ONLINE = false;
 
 // Heartbeat cadence: we re-stamp `lastActive` every 20s while the app runs.
 export const HEARTBEAT_INTERVAL_MS = 20000;
-// How old `lastActive` may be before readers treat the user as offline. The
-// generous window keeps a throttled background tab (timers can slow to ~1/min
-// in hidden tabs) from flipping an always-online user offline mid-session.
-export const PRESENCE_STALE_MS = 300000;
+// How old `lastActive` may be before readers treat the user as offline. Kept
+// short enough that a user who closed the app stops showing a green dot within
+// ~2 minutes, while still tolerating throttled background-tab timers.
+export const PRESENCE_STALE_MS = 120000;
 // Client-side re-check cadence so green dots drop shortly after going stale.
 export const PRESENCE_TICK_MS = 5000;
 
@@ -151,7 +151,10 @@ function handleVisibilityChange(): void {
 
 function handlePageHide(): void {
   if (!active) return;
-  if (ALWAYS_ONLINE) return;
+  // Leaving the page entirely (close tab / navigate away / bfcache eviction)
+  // means the heartbeat is gone, so write offline immediately even in
+  // always-online mode. Backgrounding a tab (visibilitychange) still keeps the
+  // user online via the heartbeat, but a fully closed app must not stay green.
   stopHeartbeat();
   markOffline();
 }

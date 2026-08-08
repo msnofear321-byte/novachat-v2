@@ -26,22 +26,17 @@ export default function ForgotPasswordScreen() {
   }
 
   return (
-    <div className="min-h-[100dvh] w-full flex items-center justify-center px-4 py-8 relative overflow-hidden" style={{ background: '#050505' }}>
-      {/* Background orbs */}
-      <div className="absolute inset-0 pointer-events-none">
-        <motion.div
-          animate={{ scale: [1, 1.15, 1] }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-[-10%] left-[-5%] w-[400px] h-[400px] rounded-full blur-[140px]"
-          style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.12), transparent 70%)' }}
-        />
-        <motion.div
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut', delay: 3 }}
-          className="absolute bottom-[-10%] right-[-5%] w-[350px] h-[350px] rounded-full blur-[120px]"
-          style={{ background: 'radial-gradient(circle, rgba(168,85,247,0.1), transparent 70%)' }}
-        />
-      </div>
+    <div className="min-h-[100dvh] w-full flex items-center justify-center px-4 py-8 relative overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
+      {/* Brand doodle-style watermark */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.5]"
+        style={{
+          backgroundImage:
+            'radial-gradient(var(--border-accent) 1px, transparent 1.5px), radial-gradient(var(--border-accent) 1px, transparent 1.5px)',
+          backgroundSize: '22px 22px, 22px 22px',
+          backgroundPosition: '0 0, 11px 11px',
+        }}
+      />
 
       <motion.div
         initial={{ opacity: 0, y: 24, scale: 0.97 }}
@@ -49,9 +44,9 @@ export default function ForgotPasswordScreen() {
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
         className="w-full max-w-[400px] relative z-10"
       >
-        {/* Neon glass card */}
-        <div className="neon-glass rounded-[28px] p-8 relative overflow-hidden">
-          <div className="absolute top-0 left-[15%] right-[15%] h-[1px] bg-gradient-to-r from-transparent via-purple-400/30 to-transparent" />
+        {/* Card */}
+        <div className="glass-strong rounded-[28px] p-8 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[var(--accent-primary)] via-[var(--accent-secondary)] to-[var(--accent-gradient-end)]" />
 
           {sent ? (
             <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-4">
@@ -59,7 +54,7 @@ export default function ForgotPasswordScreen() {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.1, type: 'spring', stiffness: 300, damping: 20 }}
-                className="w-[72px] h-[72px] rounded-[20px] bg-[var(--success-bg)] flex items-center justify-center mx-auto mb-5 border border-[var(--success)]/20"
+                className="w-[72px] h-[72px] rounded-[20px] bg-[var(--success-bg)] flex items-center justify-center mx-auto mb-5 border border-[var(--success)]/40"
               >
                 <svg className="w-9 h-9 text-[var(--success)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
@@ -70,7 +65,7 @@ export default function ForgotPasswordScreen() {
                 We&apos;ve sent a password reset link to{' '}
                 <span className="text-[var(--text-primary)] font-medium">{email}</span>
               </p>
-              <button onClick={() => navigate('/login')} className="inline-flex items-center gap-2 text-[var(--accent-secondary)] hover:text-[var(--accent-tertiary)] font-medium text-[14px] transition-colors">
+              <button onClick={() => navigate('/login')} className="inline-flex items-center gap-2 text-[var(--accent-primary)] hover:text-[var(--accent-secondary)] font-medium text-[14px] transition-colors">
                 Back to Sign In
               </button>
             </motion.div>
@@ -80,13 +75,10 @@ export default function ForgotPasswordScreen() {
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="w-[56px] h-[56px] rounded-[16px] flex items-center justify-center mx-auto mb-4"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(124,58,237,0.15), rgba(168,85,247,0.15))',
-                    border: '1px solid rgba(124,58,237,0.2)',
-                  }}
+                  className="w-[72px] h-[72px] rounded-[24px] flex items-center justify-center mx-auto mb-4"
+                  style={{ background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-gradient-end))' }}
                 >
-                  <HiOutlineEnvelope className="w-7 h-7 text-[var(--accent-primary)]" />
+                  <HiOutlineEnvelope className="w-9 h-9 text-white" />
                 </motion.div>
                 <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-1">Reset Password</h2>
                 <p className="text-[var(--text-secondary)] text-[14px]">Enter your email and we&apos;ll send you a reset link</p>
@@ -100,24 +92,24 @@ export default function ForgotPasswordScreen() {
                     <input
                       type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@example.com" required
-                      className="w-full pl-11 pr-4 py-3.5 bg-[var(--bg-input)] border border-[var(--border-primary)] rounded-[14px] text-[var(--text-primary)] text-[15px] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/30 focus:border-[var(--accent-primary)]/40 focus:bg-[var(--bg-input-focus)] transition-all duration-200"
+                      className="w-full pl-11 pr-4 py-3.5 bg-[var(--bg-input)] border border-[var(--border-primary)] rounded-[12px] text-[var(--text-primary)] text-[15px] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-glow-strong)] focus:border-[var(--border-accent)] transition-all duration-200"
                     />
                   </div>
                 </motion.div>
 
                 {error && (
-                  <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="bg-[var(--danger-bg)] border border-[var(--danger)]/20 rounded-[14px] px-4 py-3">
+                  <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="bg-[var(--danger-bg)] border border-[var(--danger)]/40 rounded-[12px] px-4 py-3">
                     <p className="text-[var(--danger)] text-[13px] text-center">{error}</p>
                   </motion.div>
                 )}
 
                 <motion.button type="submit" disabled={loading} whileTap={{ scale: 0.98 }}
-                  className="neon-btn w-full">
+                  className="w-full py-3.5 rounded-full bg-gradient-to-r from-[var(--accent-primary)] to-[var(--accent-gradient-end)] text-white font-semibold text-[15px] shadow-[var(--accent-shadow-lg)] transition-all duration-300 hover:shadow-[var(--accent-glow-strong)] disabled:opacity-50 disabled:cursor-not-allowed">
                   {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto" /> : 'Send Reset Link'}
                 </motion.button>
 
                 <div className="text-center">
-                  <button type="button" onClick={() => navigate('/login')} className="inline-flex items-center gap-2 text-[var(--text-muted)] hover:text-[var(--text-secondary)] text-[14px] transition-colors">
+                  <button type="button" onClick={() => navigate('/login')} className="inline-flex items-center gap-2 text-[var(--text-muted)] hover:text-[var(--accent-primary)] text-[14px] transition-colors">
                     Back to Sign In
                   </button>
                 </div>

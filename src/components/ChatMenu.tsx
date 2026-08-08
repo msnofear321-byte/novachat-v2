@@ -12,7 +12,13 @@ import {
   HiOutlineMapPin,
   HiOutlineTrash,
   HiOutlineCheck,
+  HiOutlineUser,
+  HiOutlineFolder,
+  HiOutlineLink,
+  HiOutlineDocumentText,
+  HiOutlineFlag,
 } from 'react-icons/hi2';
+import { HiOutlineBan } from 'react-icons/hi';
 import { useTheme, THEMES, type ThemeName } from '@/context/ThemeContext';
 import { useWallpaper } from '@/context/WallpaperContext';
 import {
@@ -22,12 +28,17 @@ import {
   toggleArchiveConversation,
   getStarredMessages,
   exportChat,
+  getConversationMessages,
+  deleteConversation,
+  blockUser,
+  unblockUser,
+  reportUser,
 } from '@/services/firestore';
-import { useAuth } from '@/context/AuthContext';
 import type { Message, Conversation } from '@/types';
 import LiveLocationPanel from '@/components/LiveLocationPanel';
 
-type MenuView = 'main' | 'starred' | 'theme' | 'wallpaper' | 'wallpaper-solids' | 'wallpaper-gradients';
+type MenuView = 'main' | 'starred' | 'theme' | 'wallpaper' | 'wallpaper-solids' | 'wallpaper-gradients' | 'media' | 'report';
+type MediaTab = 'media' | 'files' | 'links';
 
 interface ConfirmAction {
   title: string;
@@ -40,9 +51,19 @@ interface ChatMenuProps {
   conversationId: string;
   conversation?: Conversation;
   otherUserId: string;
+  isBlocked?: boolean;
   onSearchOpen: () => void;
+  onOpenInfo?: () => void;
   onConversationDeleted: () => void;
 }
+
+const REPORT_REASONS = [
+  'Spam or scam',
+  'Harassment or abuse',
+  'Inappropriate content',
+  'Impersonation',
+  'Other',
+];
 
 const SOLID_COLORS = [
   { id: 's1', label: 'Deep Navy', css: 'linear-gradient(180deg, #0f172a, #1e293b)' },
@@ -72,14 +93,25 @@ const GRADIENT_COLORS = [
   { id: 'g10', label: 'Cosmic', css: 'linear-gradient(135deg, #0a001a, #1a0a2f, #240d24)' },
 ];
 
+function extractLinks(text: string): string[] {
+  return text.match(/https?:\/\/[^\s]+/g) || [];
+}
+
+function formatFileSize(bytes?: number): string {
+  if (!bytes) return '';
+  if (bytes > 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
+  return `${(bytes / 1024).toFixed(0)} KB`;
+}
+
 export default function ChatMenu({
   conversationId,
   conversation,
-  otherUserId: _otherUserId,
+  otherUserId,
+  isBlocked = false,
   onSearchOpen,
-  onConversationDeleted: _onConversationDeleted,
+  onOpenInfo,
+  onConversationDeleted,
 }: ChatMenuProps) {
-  const { user: _user } = useAuth();
   const { theme, setTheme } = useTheme();
   const { setWallpaper } = useWallpaper();
   const [open, setOpen] = useState(false);
@@ -89,11 +121,17 @@ export default function ChatMenu({
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [showLiveLocation, setShowLiveLocation] = useState(false);
+  const [mediaTab, setMediaTab] = useState<MediaTab>('media');
+  const [mediaMessages, setMediaMessages] = useState<Message[]>([]);
+  const [loadingMedia, setLoadingMedia] = useState(false);
+  const [reportDone, setReportDone] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const close = useCallback(() => {
     setOpen(false);
     setView('main');
+    setMediaTab('media');
+    setReportDone(false);
   }, []);
 
   useEffect(() => {
@@ -123,6 +161,69 @@ export default function ChatMenu({
         }
       },
     });
+  }
+
+  function handleDeleteChat() {
+    setConfirmAction({
+      title: 'Delete Chat',
+      message: 'This will permanently delete this chat and all of its messages for both of you. This action cannot be undone.',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmAction(null);
+        setActionLoading(true);
+        try {
+          await deleteConversation(conversationId);
+          close();
+          onConversationDeleted();
+        } catch (e) {
+          console.error('Delete chat failed:', e);
+        } finally {
+          setActionLoading(false);
+        }
+      },
+    });
+  }
+
+  function handleBlock() {
+    if (isBlocked) {
+      unblockUser(otherUserId).catch((e) => console.error('Unblock failed:', e));
+      close();
+      return;
+    }
+    setConfirmAction({
+      title: 'Block User',
+      message: 'Blocking will stop this user from sending you messages and calling you. You can unblock them anytime.',
+      danger: true,
+      onConfirm: async () => {
+        setConfirmAction(null);
+        setActionLoading(true);
+        try {
+          await blockUser(otherUserId);
+          close();
+        } catch (e) {
+          console.error('Block failed:', e);
+        } finally {
+          setActionLoading(false);
+        }
+      },
+    });
+  }
+
+  async function handleReport(reason: string) {
+    setActionLoading(true);
+    try {
+      await reportUser(otherUserId, reason);
+      setReportDone(true);
+    } catch (e) {
+      console.error('Report failed:', e);
+      setConfirmAction({
+        title: 'Report Failed',
+        message: 'Couldn\u2019t submit the report. Please try again.',
+        onConfirm: () => setConfirmAction(null),
+      });
+    } finally {
+      setActionLoading(false);
+    }
   }
 
   async function handlePin() {
@@ -195,6 +296,19 @@ export default function ChatMenu({
     }
   }
 
+  async function handleMediaFilesLinks() {
+    setView('media');
+    setLoadingMedia(true);
+    try {
+      const msgs = await getConversationMessages(conversationId);
+      setMediaMessages(msgs);
+    } catch (e) {
+      console.error('Failed to load media:', e);
+    } finally {
+      setLoadingMedia(false);
+    }
+  }
+
   function handleWallpaperSelect(css: string) {
     setWallpaper({ id: `custom-${Date.now()}`, label: 'Custom', css });
     close();
@@ -203,6 +317,119 @@ export default function ChatMenu({
   function handleWallpaperClear() {
     setWallpaper(null);
     close();
+  }
+
+  const mediaItems = mediaMessages.filter((m) => (m.type === 'image' || m.type === 'gif' || m.type === 'video') && m.mediaURL);
+  const fileItems = mediaMessages.filter((m) => m.type === 'file' && m.mediaURL);
+  const linkItems = mediaMessages.filter((m) => m.text && /https?:\/\//.test(m.text));
+
+  function renderMediaView() {
+    return (
+      <>
+        <MenuHeader title="Media, Files & Links" onBack={() => setView('main')} />
+        <div className="flex gap-1 px-3 py-2">
+          {([['media', `Media ${mediaItems.length}`], ['files', `Files ${fileItems.length}`], ['links', `Links ${linkItems.length}`]] as [MediaTab, string][]).map(([tab, label]) => (
+            <button key={tab} onClick={() => setMediaTab(tab)}
+              className={`flex-1 px-2 py-2 rounded-[10px] text-[12px] font-medium transition-all ${
+                mediaTab === tab
+                  ? 'bg-[var(--accent-primary)]/12 text-[var(--accent-primary)]'
+                  : 'text-[var(--text-muted)] hover:bg-[var(--hover-bg)]'
+              }`}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {loadingMedia ? (
+          <div className="flex items-center justify-center py-10">
+            <div className="w-5 h-5 border-2 border-[var(--text-muted)]/30 border-t-[var(--accent-primary)] rounded-full animate-spin" />
+          </div>
+        ) : mediaTab === 'media' ? (
+          mediaItems.length === 0 ? (
+            <EmptyState icon={HiOutlinePhoto} text="No media yet" />
+          ) : (
+            <div className="max-h-[300px] overflow-y-auto custom-scrollbar grid grid-cols-3 gap-1 px-3 py-2">
+              {mediaItems.map((m) => (
+                <button key={m.id} onClick={() => window.open(m.mediaURL, '_blank', 'noopener')}
+                  className="aspect-square rounded-[10px] overflow-hidden bg-[var(--bg-input)] hover:opacity-90 transition-all">
+                  <img src={m.mediaURL} alt="" loading="lazy" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )
+        ) : mediaTab === 'files' ? (
+          fileItems.length === 0 ? (
+            <EmptyState icon={HiOutlineDocumentText} text="No files yet" />
+          ) : (
+            <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+              {fileItems.map((m) => (
+                <a key={m.id} href={m.mediaURL} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--hover-bg)] transition-all">
+                  <div className="w-9 h-9 rounded-[10px] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] flex items-center justify-center flex-shrink-0">
+                    <HiOutlineFolder className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] text-[var(--text-primary)] truncate">{m.fileName || 'File'}</p>
+                    {formatFileSize(m.fileSize) && (
+                      <p className="text-[11px] text-[var(--text-muted)]">{formatFileSize(m.fileSize)}</p>
+                    )}
+                  </div>
+                </a>
+              ))}
+            </div>
+          )
+        ) : linkItems.length === 0 ? (
+          <EmptyState icon={HiOutlineLink} text="No links yet" />
+        ) : (
+          <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+            {linkItems.map((m) =>
+              extractLinks(m.text).map((link, i) => (
+                <a key={`${m.id}-${i}`} href={link} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--hover-bg)] transition-all">
+                  <HiOutlineLink className="w-4 h-4 text-[var(--accent-primary)] flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] text-[var(--accent-primary)] truncate">{link}</p>
+                    <p className="text-[11px] text-[var(--text-muted)] truncate">{m.text}</p>
+                  </div>
+                </a>
+              )),
+            )}
+          </div>
+        )}
+      </>
+    );
+  }
+
+  function renderReportView() {
+    return (
+      <>
+        <MenuHeader title="Report User" onBack={() => setView('main')} />
+        {reportDone ? (
+          <div className="px-4 py-10 text-center">
+            <HiOutlineFlag className="w-8 h-8 text-[var(--success)] mx-auto mb-3" />
+            <p className="text-[13px] text-[var(--text-primary)]">Report submitted</p>
+            <p className="text-[12px] text-[var(--text-muted)] mt-1">Thank you. Our team will review this report.</p>
+            <button onClick={close}
+              className="mt-5 px-5 py-2 rounded-[12px] text-[13px] font-medium bg-[var(--accent-primary)]/10 text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/20 transition-all">
+              Done
+            </button>
+          </div>
+        ) : (
+          <>
+            <p className="px-4 pt-3 pb-1 text-[12px] text-[var(--text-muted)]">Why are you reporting this user?</p>
+            <div className="py-1">
+              {REPORT_REASONS.map((reason) => (
+                <button key={reason} onClick={() => handleReport(reason)} disabled={actionLoading}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--hover-bg)] transition-all disabled:opacity-50">
+                  <span className="text-[13px] text-[var(--text-primary)]">{reason}</span>
+                  {actionLoading && <div className="w-4 h-4 border-2 border-[var(--text-muted)]/30 border-t-[var(--accent-primary)] rounded-full animate-spin ml-auto" />}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </>
+    );
   }
 
   function renderMenuItems() {
@@ -292,22 +519,32 @@ export default function ChatMenu({
             )}
           </>
         );
+      case 'media':
+        return renderMediaView();
+      case 'report':
+        return renderReportView();
       default:
         return (
           <>
             <MenuItem label={conversation?.pinned ? 'Unpin Chat' : 'Pin Chat'} icon={HiOutlineMapPin} onClick={handlePin} loading={actionLoading} />
+            <MenuItem label="Chat Info" icon={HiOutlineUser} onClick={() => { onOpenInfo?.(); close(); }} />
+            <MenuItem label="Search Messages" icon={HiOutlineMagnifyingGlass} onClick={() => { onSearchOpen(); close(); }} />
             <MenuItem label="Star Messages" icon={HiOutlineStar} onClick={handleStarredMessages} />
-            <MenuItem label="Search" icon={HiOutlineMagnifyingGlass} onClick={() => { onSearchOpen(); close(); }} />
-            <MenuItem label="Export Chat" icon={HiOutlineArrowDownTray} onClick={handleExportChat} loading={actionLoading} />
+            <MenuItem label="Media, Files & Links" icon={HiOutlinePhoto} onClick={handleMediaFilesLinks} />
             <div className="mx-3 my-1 border-t border-[var(--border-primary)]" />
-            <MenuItem label={conversation?.muted ? 'Unmute' : 'Mute'} icon={HiOutlineBellSlash} onClick={handleMute} loading={actionLoading} />
-            <MenuItem label={conversation?.archived ? 'Unarchive' : 'Archive'} icon={HiOutlineArchiveBox} onClick={handleArchive} loading={actionLoading} />
+            <MenuItem label={conversation?.muted ? 'Unmute Notifications' : 'Mute Notifications'} icon={HiOutlineBellSlash} onClick={handleMute} loading={actionLoading} />
+            <MenuItem label={conversation?.archived ? 'Unarchive Chat' : 'Archive Chat'} icon={HiOutlineArchiveBox} onClick={handleArchive} loading={actionLoading} />
+            <MenuItem label="Export Chat" icon={HiOutlineArrowDownTray} onClick={handleExportChat} loading={actionLoading} />
             <div className="mx-3 my-1 border-t border-[var(--border-primary)]" />
             <MenuItem label="Theme" icon={HiOutlinePaintBrush} onClick={() => setView('theme')} trailing />
             <MenuItem label="Wallpaper" icon={HiOutlinePhoto} onClick={() => setView('wallpaper')} trailing />
             <MenuItem label="Share Live Location" icon={HiOutlineMapPin} onClick={() => setShowLiveLocation(true)} />
             <div className="mx-3 my-1 border-t border-[var(--border-primary)]" />
             <MenuItem label="Clear Chat" icon={HiOutlineTrash} onClick={handleClearChat} loading={actionLoading} danger />
+            <MenuItem label="Delete Chat" icon={HiOutlineTrash} onClick={handleDeleteChat} loading={actionLoading} danger />
+            <div className="mx-3 my-1 border-t border-[var(--border-primary)]" />
+            <MenuItem label={isBlocked ? 'Unblock User' : 'Block User'} icon={HiOutlineBan} onClick={handleBlock} loading={actionLoading} danger={!isBlocked} />
+            <MenuItem label="Report User" icon={HiOutlineFlag} onClick={() => setView('report')} />
           </>
         );
     }
@@ -315,8 +552,8 @@ export default function ChatMenu({
 
   return (
     <div ref={menuRef} className="relative">
-      <motion.button whileTap={{ scale: 0.9 }} onClick={() => setOpen(!open)}
-        className={`w-10 h-10 rounded-[12px] flex items-center justify-center transition-all ${
+      <motion.button whileTap={{ scale: 0.9 }} onClick={() => setOpen(!open)} aria-label="Chat options"
+        className={`w-11 h-11 rounded-[12px] flex items-center justify-center transition-all ${
           open ? 'text-[var(--accent-primary)] bg-[var(--accent-primary)]/10' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--hover-bg)]'
         }`}>
         <HiOutlineEllipsisVertical className="w-[20px] h-[20px]" />
@@ -329,9 +566,9 @@ export default function ChatMenu({
               className="fixed inset-0 z-40" onClick={close} />
             <motion.div initial={{ opacity: 0, scale: 0.92, y: -8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.92, y: -8 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute right-0 top-full mt-2 w-[272px] sm:w-[272px] glass-premium rounded-[20px] shadow-[var(--shadow-xl)] z-50 overflow-hidden">
-              <div className="h-[2px] bg-gradient-to-r from-transparent via-[var(--accent-primary)]/30 to-transparent" />
-              <div className="py-1">{renderMenuItems()}</div>
+              className="absolute right-0 top-full mt-2 w-[272px] sm:w-[300px] glass-premium rounded-[20px] shadow-[var(--shadow-xl)] z-50 overflow-hidden max-h-[min(70vh,540px)] flex flex-col">
+              <div className="h-[2px] bg-gradient-to-r from-transparent via-[var(--accent-primary)]/30 to-transparent flex-shrink-0" />
+              <div className="py-1 overflow-y-auto custom-scrollbar flex-1">{renderMenuItems()}</div>
             </motion.div>
           </>
         )}
@@ -359,9 +596,9 @@ export default function ChatMenu({
               <p className="text-[13px] text-[var(--text-secondary)] mb-5 leading-relaxed">{confirmAction.message}</p>
               <div className="flex gap-2">
                 <button onClick={() => setConfirmAction(null)}
-                  className="flex-1 py-2.5 text-[13px] font-medium rounded-[12px] bg-[var(--bg-input)] border border-[var(--border-primary)] text-[var(--text-primary)] hover:bg-[var(--hover-bg)] transition-all">Cancel</button>
+                  className="flex-1 py-3 text-[13px] font-medium rounded-[12px] bg-[var(--bg-input)] border border-[var(--border-primary)] text-[var(--text-primary)] hover:bg-[var(--hover-bg)] transition-all">Cancel</button>
                 <button onClick={confirmAction.onConfirm}
-                  className={`flex-1 py-2.5 text-[13px] font-medium rounded-[12px] text-white transition-all ${confirmAction.danger ? 'bg-[var(--danger)] hover:opacity-90' : 'bg-[var(--accent-primary)] hover:opacity-90'}`}>Confirm</button>
+                  className={`flex-1 py-3 text-[13px] font-medium rounded-[12px] text-white transition-all ${confirmAction.danger ? 'bg-[var(--danger)] hover:opacity-90' : 'bg-[var(--accent-primary)] hover:opacity-90'}`}>Confirm</button>
               </div>
             </motion.div>
           </>
@@ -375,7 +612,7 @@ function MenuHeader({ title, onBack }: { title: string; onBack: () => void }) {
   return (
     <div className="flex items-center gap-2 px-3 py-2.5 border-b border-[var(--border-primary)]">
       <button onClick={onBack}
-        className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] transition-all">
+        className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] transition-all">
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
@@ -390,7 +627,7 @@ function MenuItem({ label, icon: Icon, onClick, loading = false, danger = false,
 }) {
   return (
     <button onClick={onClick} disabled={loading}
-      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-all disabled:opacity-50 hover:bg-[var(--hover-bg)]`}>
+      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all disabled:opacity-50 hover:bg-[var(--hover-bg)]`}>
       {Icon && <Icon className={`w-[18px] h-[18px] flex-shrink-0 ${danger ? 'text-[var(--danger)]' : 'text-[var(--text-secondary)]'}`} />}
       <span className={`flex-1 text-[13px] ${danger ? 'text-[var(--danger)]' : 'text-[var(--text-primary)]'}`}>{label}</span>
       {loading && <div className="w-4 h-4 border-2 border-[var(--text-muted)]/30 border-t-[var(--accent-primary)] rounded-full animate-spin" />}
@@ -400,5 +637,14 @@ function MenuItem({ label, icon: Icon, onClick, loading = false, danger = false,
         </svg>
       )}
     </button>
+  );
+}
+
+function EmptyState({ icon: Icon, text }: { icon: React.ComponentType<{ className?: string }>; text: string }) {
+  return (
+    <div className="py-10 text-center px-4">
+      <Icon className="w-8 h-8 text-[var(--text-muted)] mx-auto mb-2" />
+      <p className="text-[13px] text-[var(--text-muted)]">{text}</p>
+    </div>
   );
 }

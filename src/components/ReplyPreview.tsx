@@ -29,7 +29,7 @@ export default function ReplyPreview({ replyTo, onCancel, otherUserName }: Reply
           {replyTo.type === 'text' ? replyTo.text : `📎 ${replyTo.type}`}
         </p>
       </div>
-      <button onClick={onCancel} className="w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] transition-all flex-shrink-0">
+      <button onClick={onCancel} aria-label="Cancel reply" className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] transition-all flex-shrink-0">
         <HiOutlineXMark className="w-4 h-4" />
       </button>
     </motion.div>

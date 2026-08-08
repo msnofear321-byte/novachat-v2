@@ -35,14 +35,15 @@ function getLoginErrorMessage(code: string): string {
 }
 
 export async function loginWithEmail(email: string, password: string): Promise<UserCredential> {
+  const trimmedEmail = email.trim();
   let result: UserCredential;
   try {
-    result = await signInWithEmailAndPassword(auth, email, password);
+    result = await signInWithEmailAndPassword(auth, trimmedEmail, password);
   } catch (err: unknown) {
     const code = (err as { code?: string }).code || '';
     if (code === 'auth/invalid-credential') {
       try {
-        const methods = await fetchSignInMethodsForEmail(auth, email.trim());
+        const methods = await fetchSignInMethodsForEmail(auth, trimmedEmail);
         if (methods.length === 0) throw new Error('NO_ACCOUNT');
         if (methods.some((m) => m !== 'password')) throw new Error('WRONG_PROVIDER');
         throw new Error('WRONG_PASSWORD');
@@ -85,7 +86,20 @@ export async function loginWithEmail(email: string, password: string): Promise<U
 }
 
 export async function loginWithGoogle(): Promise<UserCredential> {
-  const result = await signInWithPopup(auth, googleProvider);
+  let result: UserCredential;
+  try {
+    result = await signInWithPopup(auth, googleProvider);
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code || '';
+    const popupMessages: Record<string, string> = {
+      'auth/popup-closed-by-user': 'Sign-in was cancelled. Please try again.',
+      'auth/cancelled-popup-request': 'Sign-in was cancelled. Please try again.',
+      'auth/popup-blocked': 'The popup was blocked by your browser. Allow popups for this site and try again.',
+      'auth/network-request-failed': 'Network error. Please check your connection.',
+      'auth/operation-not-allowed': 'Google sign-in is not enabled. Please contact support.',
+    };
+    throw new Error(popupMessages[code] || getLoginErrorMessage(code));
+  }
   const user = result.user;
 
   const userDoc = await getDoc(doc(db, 'users', user.uid));

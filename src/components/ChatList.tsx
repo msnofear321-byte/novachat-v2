@@ -5,6 +5,7 @@ import { subscribeToConversations, subscribeToUserPresence, subscribeToTypingSta
 import { isOnlineNow, presenceMillis, PRESENCE_TICK_MS } from '@/services/presence';
 import { useAuth } from '@/context/AuthContext';
 import ChatItem from '@/components/ChatItem';
+import ChatItemActions from '@/components/ChatItemActions';
 import type { Conversation, User } from '@/types';
 
 interface ChatListProps {
@@ -23,12 +24,16 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
   const [userMap, setUserMap] = useState<Record<string, User>>({});
   const [typingMap, setTypingMap] = useState<Record<string, boolean>>({});
   const [now, setNow] = useState(() => Date.now());
+  const [menuTarget, setMenuTarget] = useState<Conversation | null>(null);
   const userSubsRef = useRef<Record<string, () => void>>({});
 
   useEffect(() => {
     const unsub = subscribeToConversations((convs) => {
       setConversations(convs);
-      const totalUnread = convs.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+      const totalUnread = convs.reduce((sum, c) => {
+        const u = c.unreadByUser?.[currentUser?.uid || ''] ?? c.unreadCount ?? 0;
+        return sum + (c.lastMessageSenderId === currentUser?.uid ? 0 : u);
+      }, 0);
       onTotalUnreadChange?.(totalUnread);
     });
     return unsub;
@@ -98,12 +103,21 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
     navigate(`/?c=${id}`);
   }, [navigate]);
 
+  const handleOpenMenu = useCallback((id: string) => {
+    const c = conversations.find((x) => x.id === id);
+    if (c) setMenuTarget(c);
+  }, [conversations]);
+
   const pinned = conversations.filter((c) => c.pinned);
   const unpinned = conversations.filter((c) => !c.pinned);
 
   const filter = (convs: Conversation[]) =>
     searchQuery.trim()
       ? convs.filter((c) => {
+          if (c.type === 'group') {
+            return (c.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+              c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase());
+          }
           const otherId = c.participants.find((p) => p !== currentUser?.uid);
           const u = otherId ? userMap[otherId] : undefined;
           return u?.displayName.toLowerCase().includes(searchQuery.toLowerCase()) || c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase());
@@ -114,17 +128,19 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
   const filteredUnpinned = filter(unpinned);
 
   const renderItem = (c: Conversation) => {
-    const otherId = c.participants.find((p) => p !== currentUser?.uid);
+    const isGroup = c.type === 'group';
+    const otherId = isGroup ? undefined : c.participants.find((p) => p !== currentUser?.uid);
     const otherUser = otherId ? userMap[otherId] : undefined;
     return (
       <ChatItem
         key={c.id}
         conversation={c}
         otherUser={otherUser}
-        online={isOnlineNow(otherUser, now)}
+        online={isGroup ? false : isOnlineNow(otherUser, now)}
         isActive={c.id === activeConversationId}
         onSelect={handleSelect}
         isTyping={typingMap[c.id]}
+        onOpenMenu={handleOpenMenu}
       />
     );
   };
@@ -135,7 +151,7 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
         <motion.div
           animate={{ y: [0, -6, 0] }}
           transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-          className="w-[80px] h-[80px] rounded-[22px] bg-gradient-to-br from-[var(--accent-glow)] to-transparent flex items-center justify-center mb-5"
+          className="w-[80px] h-[80px] rounded-[24px] bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/20 flex items-center justify-center mb-5"
         >
           <svg className="w-10 h-10 text-[var(--accent-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.3}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -161,25 +177,31 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
   }
 
   return (
-    <div className="flex-1 overflow-y-auto custom-scrollbar">
-      {filteredPinned.length > 0 && (
-        <div>
-          <div className="px-5 py-2.5 flex items-center gap-2">
-            <span className="section-label">Pinned</span>
-          </div>
-          {filteredPinned.map(renderItem)}
-        </div>
+    <>
+      <motion.div
+        initial="hidden"
+        animate="show"
+        variants={{ show: { transition: { staggerChildren: 0.035, delayChildren: 0.05 } } }}
+        className="flex-1 overflow-y-auto custom-scrollbar momentum-scroll gpu-hint"
+      >
+        {filteredPinned.map(renderItem)}
+        {filteredUnpinned.map(renderItem)}
+      </motion.div>
+      {menuTarget && (
+        <ChatItemActions
+          conversation={menuTarget}
+          otherUser={(() => {
+            const oid = menuTarget.type === 'group' ? undefined : menuTarget.participants.find((p) => p !== currentUser?.uid);
+            return oid ? userMap[oid] : undefined;
+          })()}
+          isOpen={!!menuTarget}
+          onClose={() => setMenuTarget(null)}
+          onOpenChat={() => {
+            setMenuTarget(null);
+            navigate(`/?c=${menuTarget.id}`);
+          }}
+        />
       )}
-      {filteredUnpinned.length > 0 && (
-        <div>
-          {filteredPinned.length > 0 && (
-            <div className="px-5 py-2.5 flex items-center gap-2">
-              <span className="section-label">Recent</span>
-            </div>
-          )}
-          {filteredUnpinned.map(renderItem)}
-        </div>
-      )}
-    </div>
+    </>
   );
 }

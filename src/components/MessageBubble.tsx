@@ -1,11 +1,13 @@
-import { useState, useRef, useEffect, memo, type KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, memo, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { motion } from 'framer-motion';
-import { HiOutlineStar, HiOutlineArrowUturnRight, HiOutlinePencilSquare, HiOutlineTrash, HiOutlineChatBubbleLeftRight, HiOutlineDocumentDuplicate } from 'react-icons/hi2';
+import { HiOutlineStar, HiOutlineArrowUturnRight, HiOutlinePencilSquare, HiOutlineTrash, HiOutlineChatBubbleLeftRight, HiOutlineDocumentDuplicate, HiOutlineFaceSmile, HiOutlineMapPin } from 'react-icons/hi2';
 import { HiStar } from 'react-icons/hi';
 import { useAuth } from '@/context/AuthContext';
 import { formatTimestamp } from '@/utils/format';
 import VoiceMessage from '@/components/VoiceMessage';
 import type { Message } from '@/types';
+
+export const MESSAGE_REACTIONS = ['❤️', '😂', '👍', '😮', '😢', '🔥', '👏'] as const;
 
 interface MessageBubbleProps {
   message: Message;
@@ -20,24 +22,87 @@ interface MessageBubbleProps {
   onEdit?: (msg: Message, newText: string) => void;
   onCopy?: (msg: Message) => void;
   onScrollToMessage?: (messageId: string) => void;
+  onReact?: (msg: Message, emoji: string) => void;
+  onPin?: (msg: Message) => void;
+  highlight?: string;
+}
+
+function highlightText(text: string, highlight: string): React.ReactNode {
+  const q = highlight.trim().toLowerCase();
+  if (!q || !text) return text;
+  const lower = text.toLowerCase();
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  let i = lower.indexOf(q);
+  let key = 0;
+  while (i !== -1) {
+    if (i > last) out.push(<span key={key++}>{text.slice(last, i)}</span>);
+    out.push(
+      <mark key={key++} className="highlight-search">
+        {text.slice(i, i + q.length)}
+      </mark>,
+    );
+    last = i + q.length;
+    i = lower.indexOf(q, last);
+  }
+  if (last < text.length) out.push(<span key={key++}>{text.slice(last)}</span>);
+  return out.length ? out : text;
 }
 
 function MessageBubble({
   message, isOwn, showSender, senderName,
-  onReply, onForward, onStar, onDelete, onDeleteForEveryone, onEdit, onCopy, onScrollToMessage,
+  onReply, onForward, onStar, onDelete, onDeleteForEveryone, onEdit, onCopy, onScrollToMessage, onReact, onPin, highlight,
 }: MessageBubbleProps) {
   const { user } = useAuth();
   const [showActions, setShowActions] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
   const [showDeleteOptions, setShowDeleteOptions] = useState(false);
+  const [showReactions, setShowReactions] = useState(false);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
   const deleteRef = useRef<HTMLDivElement>(null);
+  const reactionsRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const pressTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const pressOriginRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const pressActiveRef = useRef(false);
 
   useEffect(() => {
     if (editing && editInputRef.current) editInputRef.current.focus();
   }, [editing]);
+
+  useEffect(() => {
+    return () => {
+      if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!showReactions) return;
+    function handleClick(e: MouseEvent) {
+      if (reactionsRef.current && !reactionsRef.current.contains(e.target as Node)) setShowReactions(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showReactions]);
+
+  useEffect(() => {
+    if (!menu) return;
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenu(null);
+    }
+    function handleKey(e: globalThis.KeyboardEvent) {
+      if (e.key === 'Escape') setMenu(null);
+    }
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [menu]);
 
   useEffect(() => {
     if (!showActions) return;
@@ -88,6 +153,57 @@ function MessageBubble({
       onDelete(message);
     }
     setShowActions(false);
+  }
+
+  const openContextMenu = (x: number, y: number) => {
+    setShowActions(false);
+    setShowDeleteOptions(false);
+    setShowReactions(false);
+    const pad = 12;
+    const menuW = 200;
+    const menuH = 360;
+    const clampedX = Math.max(pad, Math.min(x, window.innerWidth - menuW - pad));
+    const clampedY = Math.max(pad, Math.min(y, window.innerHeight - menuH - pad));
+    setMenu({ x: clampedX, y: clampedY });
+  };
+
+  const cancelLongPress = () => {
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = undefined;
+    }
+  };
+
+  function handlePressStart(e: ReactPointerEvent) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (e.pointerType !== 'touch') return;
+    const target = e.target as HTMLElement;
+    if (actionsRef.current?.contains(target) || deleteRef.current?.contains(target)) return;
+    pressActiveRef.current = true;
+    pressOriginRef.current = { x: e.clientX, y: e.clientY };
+    cancelLongPress();
+    pressTimerRef.current = setTimeout(() => {
+      if (!pressActiveRef.current) return;
+      pressActiveRef.current = false;
+      openContextMenu(pressOriginRef.current.x, pressOriginRef.current.y);
+    }, 500);
+  }
+
+  function handlePressMove(e: ReactPointerEvent) {
+    if (!pressActiveRef.current) return;
+    const dx = Math.abs(e.clientX - pressOriginRef.current.x);
+    const dy = Math.abs(e.clientY - pressOriginRef.current.y);
+    if (dx > 10 || dy > 10) cancelLongPress();
+  }
+
+  function handlePressEnd() {
+    pressActiveRef.current = false;
+    cancelLongPress();
+  }
+
+  function handleContextMenu(e: React.MouseEvent) {
+    e.preventDefault();
+    openContextMenu(e.clientX, e.clientY);
   }
 
   if (message.deleted || message.deletedForEveryone) {
@@ -214,8 +330,14 @@ function MessageBubble({
       transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
       className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-2 sm:px-4 mb-1 group`}
       data-message-id={message.id}
+      onPointerDown={handlePressStart}
+      onPointerMove={handlePressMove}
+      onPointerUp={handlePressEnd}
+      onPointerCancel={handlePressEnd}
+      onPointerLeave={handlePressEnd}
+      onContextMenu={handleContextMenu}
     >
-      <div className={`relative max-w-[85%] sm:max-w-[75%] md:max-w-[70%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}>
+      <div className={`relative max-w-[85%] sm:max-w-[75%] md:max-w-[70%] min-w-0 ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}>
         {showSender && !isOwn && (
           <span className="text-[11px] font-semibold text-[var(--accent-primary)] mb-1 ml-1">{senderName}</span>
         )}
@@ -224,7 +346,7 @@ function MessageBubble({
           <button
             onClick={() => onScrollToMessage?.(message.replyTo!.id)}
             className={`mb-1.5 px-3 py-2 rounded-[12px] border border-[var(--border-primary)] bg-[var(--bg-input)] max-w-full text-left hover:bg-[var(--hover-bg)] transition-all ${
-              isOwn ? 'rounded-br-[6px]' : 'rounded-bl-[6px]'
+              isOwn ? 'rounded-br-[4px]' : 'rounded-bl-[4px]'
             }`}
           >
             <p className="text-[11px] font-medium text-[var(--accent-secondary)]">
@@ -236,10 +358,10 @@ function MessageBubble({
           </button>
         )}
 
-        <div className={`relative overflow-hidden ${isOwn ? 'rounded-[18px] rounded-br-[6px]' : 'rounded-[18px] rounded-bl-[6px]'} ${
+        <div className={`relative overflow-hidden ${isOwn ? 'rounded-[16px] rounded-br-[4px]' : 'rounded-[16px] rounded-bl-[4px]'} ${
           isOwn
-            ? 'bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-gradient-end)] text-white shadow-[0_2px_16px_var(--accent-shadow)]'
-            : 'bg-[var(--bg-message-other)] border border-[var(--border-primary)] text-[var(--text-primary)] shadow-[0_1px_4px_rgba(0,0,0,0.08)]'
+            ? 'bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-gradient-end)] text-white shadow-[0_1px_8px_var(--accent-glow)]'
+            : 'bg-[var(--bg-message-other)] border border-[var(--border-primary)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.06)]'
         }`}>
           {renderMediaContent()}
 
@@ -262,7 +384,9 @@ function MessageBubble({
                   <button onClick={() => { setEditText(message.text); setEditing(false); }} className="text-[11px] text-white/50 hover:text-white px-2 py-0.5 rounded-lg hover:bg-white/10 transition-all">Esc</button>
                 </div>
               ) : (
-                <p className="text-[14.5px] leading-relaxed whitespace-pre-wrap break-words">{message.text}</p>
+                <p className="text-fluid-message leading-relaxed whitespace-pre-wrap break-words wrap-anywhere">
+                  {highlight ? highlightText(message.text, highlight) : message.text}
+                </p>
               )}
             </div>
           )}
@@ -288,8 +412,61 @@ function MessageBubble({
             {message.starred && (
               <HiStar className="w-3 h-3 text-[var(--accent-star)]" />
             )}
+            {message.pinned && (
+              <HiOutlineMapPin className="w-3 h-3 text-[var(--accent-primary)] rotate-45" />
+            )}
           </div>
         </div>
+
+        {/* Reactions row */}
+        {onReact && (
+          <div ref={reactionsRef} className={`mt-1 flex items-center gap-1 flex-wrap ${isOwn ? 'justify-end' : 'justify-start'}`}>
+            {showReactions && (
+              <div className="flex items-center gap-0.5 glass-premium rounded-full p-0.5 shadow-[var(--shadow-lg)]">
+                {MESSAGE_REACTIONS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => { onReact(message, emoji); setShowReactions(false); }}
+                    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[15px] sm:text-[17px] transition-all active:scale-90 ${
+                      message.reactions?.[emoji]?.includes(user?.uid || '') ? 'bg-[var(--accent-primary)]/20' : 'hover:bg-[var(--hover-bg)]'
+                    }`}
+                    title={`React ${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            )}
+            {Object.entries(message.reactions || {})
+              .filter(([, uids]) => uids.length > 0)
+              .map(([emoji, uids]) => {
+                const mine = uids.includes(user?.uid || '');
+                return (
+                  <button
+                    key={emoji}
+                    onClick={() => onReact(message, emoji)}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium transition-all active:scale-90 ${
+                      mine
+                        ? 'bg-[var(--accent-primary)]/20 text-[var(--accent-primary)] border border-[var(--accent-primary)]/30'
+                        : 'bg-[var(--bg-input)] text-[var(--text-secondary)] border border-[var(--border-primary)] hover:bg-[var(--hover-bg)]'
+                    }`}
+                    title={uids.join(', ')}
+                  >
+                    <span className="text-[12px]">{emoji}</span>
+                    <span>{uids.length}</span>
+                  </button>
+                );
+              })}
+            <button
+              onClick={() => setShowReactions((v) => !v)}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--accent-primary)] hover:bg-[var(--hover-bg)] transition-all active:scale-90"
+              title="Add reaction"
+              aria-label="Add reaction"
+            >
+              <HiOutlineFaceSmile className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Delete options popover */}
         {showDeleteOptions && (
@@ -333,6 +510,36 @@ function MessageBubble({
           </div>
         </div>
 
+        {/* Context menu (right-click / long-press) */}
+        {menu && (
+          <div
+            ref={menuRef}
+            style={{ left: menu.x, top: menu.y }}
+            className="fixed z-[70] w-[200px] glass-premium rounded-[14px] shadow-[var(--shadow-xl)] overflow-hidden py-1 animate-spring"
+          >
+            {[
+              { icon: HiOutlineFaceSmile, label: 'React', action: () => { setShowReactions(true); setMenu(null); } },
+              { icon: HiOutlineChatBubbleLeftRight, label: 'Reply', action: () => { onReply(message); setMenu(null); } },
+              { icon: message.starred ? HiStar : HiOutlineStar, label: message.starred ? 'Unstar' : 'Star', filled: message.starred, action: () => { onStar(message); setMenu(null); } },
+              { icon: HiOutlineMapPin, label: message.pinned ? 'Unpin' : 'Pin', filled: !!message.pinned, action: () => { onPin?.(message); setMenu(null); } },
+              { icon: HiOutlineArrowUturnRight, label: 'Forward', action: () => { onForward(message); setMenu(null); } },
+              { icon: HiOutlineDocumentDuplicate, label: 'Copy', action: () => { handleCopy(); setMenu(null); } },
+              ...(canEdit ? [{ icon: HiOutlinePencilSquare, label: 'Edit', action: () => { setEditing(true); setMenu(null); } }] : []),
+              ...(isOwn ? [{ icon: HiOutlineTrash, label: 'Delete', danger: true, action: () => { handleDeleteClick(); setMenu(null); } }] : []),
+              ...(canDeleteForEveryone ? [{ icon: HiOutlineTrash, label: 'Delete for everyone', danger: true, action: () => { onDeleteForEveryone?.(message); setMenu(null); } }] : []),
+            ].map(({ icon: Icon, label, action, danger, filled }) => (
+              <button key={label} onClick={(e) => { e.stopPropagation(); action(); }}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-all ${
+                  danger
+                    ? 'text-[var(--danger)] hover:bg-[var(--danger-bg)]'
+                    : 'text-[var(--text-primary)] hover:bg-[var(--hover-bg)]'
+                }`}>
+                <Icon className={`w-4 h-4 flex-shrink-0 ${filled ? 'text-[var(--accent-star)]' : danger ? 'text-[var(--danger)]' : 'text-[var(--text-muted)]'}`} />
+                <span className="text-[13px] font-medium">{label}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </motion.div>
   );

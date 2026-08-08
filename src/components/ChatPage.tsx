@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlineMagnifyingGlass, HiOutlineArrowLeft, HiOutlinePhone, HiOutlineVideoCamera, HiOutlineXMark, HiOutlineInformationCircle } from 'react-icons/hi2';
+import { HiOutlineMagnifyingGlass, HiOutlineArrowLeft, HiOutlinePhone, HiOutlineVideoCamera, HiOutlineXMark, HiOutlineInformationCircle, HiOutlineChevronUp, HiOutlineChevronDown } from 'react-icons/hi2';
 import { HiOutlineBan } from 'react-icons/hi';
 import { useAuth } from '@/context/AuthContext';
 import { useWallpaper } from '@/context/WallpaperContext';
@@ -14,6 +14,8 @@ import {
   starMessage,
   deleteMessageForMe,
   deleteMessageForEveryone,
+  toggleReaction,
+  pinMessage,
   setTypingStatus,
   subscribeToTypingStatus,
   subscribeToUserPresence,
@@ -23,6 +25,7 @@ import {
   subscribeToBlockedStatus,
 } from '@/services/firestore';
 import { doc, onSnapshot, writeBatch } from 'firebase/firestore';
+import { getConversationOtherId } from '@/utils/chatNavigation';
 import { auth, db } from '@/services/firebase';
 import { uploadToCloudinary, getFileType, getMediaDownloadURL } from '@/services/cloudinary';
 import { showBrowserNotification } from '@/services/notifications';
@@ -33,6 +36,7 @@ import ReplyPreview from '@/components/ReplyPreview';
 import ForwardModal from '@/components/ForwardModal';
 import MessageSkeleton from '@/components/MessageSkeleton';
 import ChatMenu from '@/components/ChatMenu';
+import ChatNoteBanner from '@/components/ChatNoteBanner';
 import { formatDateSeparator, formatLastSeen } from '@/utils/format';
 import { isOnlineNow, getLastSeenMillis } from '@/services/presence';
 import type { Conversation, Message, User } from '@/types';
@@ -93,10 +97,25 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
   const otherUserRef = useRef<User | undefined>(undefined);
   otherUserRef.current = otherUser;
 
+  const otherId = useMemo(
+    () => getConversationOtherId(conversationId, user?.uid, conversation),
+    [conversationId, user?.uid, conversation],
+  );
+
   const [clock, setClock] = useState(() => Date.now());
 
+  // Only re-render when the effective online/offline state actually flips.
+  // A blind every-5s setState would re-render the entire chat (incl. the
+  // message list) repeatedly while scrolling.
   useEffect(() => {
-    const id = setInterval(() => setClock(Date.now()), 5000);
+    const id = setInterval(() => {
+      setClock((prev) => {
+        const prevState = isOnlineNow(otherUserRef.current, prev);
+        const next = Date.now();
+        const nextState = isOnlineNow(otherUserRef.current, next);
+        return prevState === nextState ? prev : next;
+      });
+    }, 5000);
     return () => clearInterval(id);
   }, []);
 
@@ -106,7 +125,7 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
     [otherUser, isOnline],
   );
 
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     if (!messagesEndRef.current) return;
     requestAnimationFrame(() => {
       messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
@@ -139,62 +158,84 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
     setPendingMessages([]);
     setLoading(true);
     prevMsgCountRef.current = 0;
-    const unsub = subscribeToMessages(
-      conversationId,
-      (msgs) => {
-        setMessages(msgs);
-        setLoading(false);
 
-        if (user) {
-          const currentUid = user.uid || auth.currentUser?.uid;
-          if (!readSyncRef.current) {
-            readSyncRef.current = true;
-            markMessagesAsRead(conversationId).catch(() => {});
+    let cancelled = false;
+    let retryCount = 0;
+    let retryTimeout: ReturnType<typeof setTimeout> | undefined;
+    let unsub: (() => void) | undefined;
+
+    const subscribe = () => {
+      unsub = subscribeToMessages(
+        conversationId,
+        (msgs) => {
+          setMessages(msgs);
+          setLoading(false);
+
+          if (user) {
+            const currentUid = user.uid || auth.currentUser?.uid;
+            if (!readSyncRef.current) {
+              readSyncRef.current = true;
+              markMessagesAsRead(conversationId).catch(() => {});
+            }
+
+            if (!deliveredRef.current) {
+              deliveredRef.current = true;
+              markMessagesAsDelivered(conversationId).catch(() => {});
+            }
+
+            const undeliveredIncoming = msgs.filter((msg) => msg.senderId !== currentUid && !msg.delivered);
+            if (undeliveredIncoming.length > 0) {
+              const batch = writeBatch(db);
+              undeliveredIncoming.forEach((msg) => {
+                batch.update(doc(db, 'messages', conversationId, 'messages', msg.id), { delivered: true });
+              });
+              batch.commit().catch(() => {});
+            }
           }
 
-          if (!deliveredRef.current) {
-            deliveredRef.current = true;
-            markMessagesAsDelivered(conversationId).catch(() => {});
+          const newCount = msgs.length;
+          if (newCount > prevMsgCountRef.current) {
+            const lastMsg = msgs[msgs.length - 1];
+            if (lastMsg && lastMsg.senderId !== user?.uid) {
+              showBrowserNotification(
+                otherUserRef.current?.displayName || 'New Message',
+                lastMsg.type === 'text' ? lastMsg.text : `Sent a ${lastMsg.type}`,
+              );
+            }
           }
+          prevMsgCountRef.current = newCount;
+        },
+        (error) => {
+          console.error('subscribeToMessages error:', error);
+          if (!cancelled && retryCount < 6) {
+            retryCount++;
+            retryTimeout = setTimeout(() => {
+              if (!cancelled) {
+                unsub?.();
+                subscribe();
+              }
+            }, Math.min(400 * 2 ** retryCount, 8000));
+          } else {
+            setLoading(false);
+          }
+        },
+      );
+    };
 
-          const undeliveredIncoming = msgs.filter((msg) => msg.senderId !== currentUid && !msg.delivered);
-          if (undeliveredIncoming.length > 0) {
-            const batch = writeBatch(db);
-            undeliveredIncoming.forEach((msg) => {
-              batch.update(doc(db, 'messages', conversationId, 'messages', msg.id), { delivered: true });
-            });
-            batch.commit().catch(() => {});
-          }
-        }
-
-        const newCount = msgs.length;
-        if (newCount > prevMsgCountRef.current) {
-          const lastMsg = msgs[msgs.length - 1];
-          if (lastMsg && lastMsg.senderId !== user?.uid) {
-            showBrowserNotification(
-              otherUserRef.current?.displayName || 'New Message',
-              lastMsg.type === 'text' ? lastMsg.text : `Sent a ${lastMsg.type}`,
-            );
-          }
-        }
-        prevMsgCountRef.current = newCount;
-      },
-      (error) => {
-        console.error('subscribeToMessages error:', error);
-        setLoading(false);
-      },
-    );
-    return unsub;
+    subscribe();
+    return () => {
+      cancelled = true;
+      if (retryTimeout) clearTimeout(retryTimeout);
+      unsub?.();
+    };
   }, [conversationId, user]);
 
   useEffect(() => {
-    const parts = conversationId.split('_');
-    const otherId = parts.find((id) => id !== user?.uid) || '';
     if (!otherId) return;
     const unsub = subscribeToUserPresence(otherId, (u) => setOtherUser(u || undefined));
     getUserById(otherId).then((u) => { if (u) setOtherUser(u); });
     return unsub;
-  }, [conversationId, user?.uid]);
+  }, [otherId, conversationId]);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'conversations', conversationId), (snap) => {
@@ -206,30 +247,67 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
   }, [conversationId]);
 
   useEffect(() => {
-    if (!user) return;
-    const parts = conversationId.split('_');
-    const otherId = parts.find((id) => id !== user.uid) || '';
-    if (!otherId) return;
+    if (!user || !otherId) return;
     const unsub = subscribeToTypingStatus(otherId, conversationId, setTyping);
     return unsub;
-  }, [conversationId, user]);
+  }, [conversationId, user, otherId]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !otherId) return;
     const unsub = subscribeToBlockedStatus(user.uid, (blocked) => {
-      const parts = conversationId.split('_');
-      const otherId = parts.find((id) => id !== user.uid) || '';
       setBlockedByMe(blocked.includes(otherId));
     });
     return unsub;
-  }, [conversationId, user]);
+  }, [conversationId, user, otherId]);
 
   const visibleMessages = useMemo(() => mergeMessages(messages, pendingMessages), [messages, pendingMessages]);
 
+  // ── In-chat message search ──────────────────────────────
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const searchMatches = useMemo(() => {
+    if (!normalizedQuery) return [];
+    return visibleMessages
+      .map((m, i) => (m.text && m.text.toLowerCase().includes(normalizedQuery) ? i : -1))
+      .filter((i) => i >= 0);
+  }, [visibleMessages, normalizedQuery]);
+
+  const searchIndexRef = useRef(0);
+  const [searchIndex, setSearchIndex] = useState(0);
+
   useEffect(() => {
+    if (searchMatches.length === 0) {
+      searchIndexRef.current = 0;
+      setSearchIndex(0);
+      return;
+    }
+    if (searchIndexRef.current >= searchMatches.length) {
+      searchIndexRef.current = searchMatches.length - 1;
+      setSearchIndex(searchIndexRef.current);
+    }
+  }, [searchMatches.length]);
+
+  const goToSearchMatch = useCallback((dir: 1 | -1) => {
+    if (searchMatches.length === 0) return;
+    const next = (searchIndexRef.current + dir + searchMatches.length) % searchMatches.length;
+    searchIndexRef.current = next;
+    setSearchIndex(next);
+    const matchId = visibleMessages[searchMatches[next]]?.id;
+    if (matchId) scrollToMessage(matchId);
+  }, [searchMatches, visibleMessages, scrollToMessage]);
+
+  // Only auto-scroll to the newest message when the user is already near the
+  // bottom; if they scrolled up to read history, don't yank the view away.
+  const isNearBottom = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+  }, []);
+
+  useEffect(() => {
+    if (!isNearBottom()) return;
     const timeout = setTimeout(() => scrollToBottom('auto'), 100);
     return () => clearTimeout(timeout);
-  }, [visibleMessages.length, scrollToBottom]);
+  }, [visibleMessages.length, scrollToBottom, isNearBottom]);
 
   const handleTyping = useCallback((active: boolean) => {
     if (!user) return;
@@ -239,8 +317,6 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
       typingTimeoutRef.current = setTimeout(() => setTypingStatus(user.uid, conversationId, false), 5000);
     }
   }, [user, conversationId]);
-
-  const otherId = conversationId.split('_').find((id) => id !== user?.uid) || '';
 
   const handleSend = useCallback(async (text: string) => {
     if (!user) return;
@@ -352,6 +428,24 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
     await starMessage(conversationId, msg.id, !msg.starred);
   }, [conversationId]);
 
+  const handleReact = useCallback(async (msg: Message, emoji: string) => {
+    try {
+      await toggleReaction(conversationId, msg.id, emoji);
+    } catch (e) {
+      console.error('Failed to toggle reaction:', e);
+      setSendError('Failed to update reaction.');
+      setTimeout(() => setSendError(null), 5000);
+    }
+  }, [conversationId]);
+
+  const handlePin = useCallback(async (msg: Message) => {
+    try {
+      await pinMessage(conversationId, msg.id, !msg.pinned);
+    } catch (e) {
+      console.error('Failed to pin message:', e);
+    }
+  }, [conversationId]);
+
   const handleDeleteForMe = useCallback(async (msg: Message) => {
     await deleteMessageForMe(conversationId, msg.id);
   }, [conversationId]);
@@ -381,35 +475,37 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
     }));
   }
 
-  const filteredMessages = searchQuery.trim()
-    ? visibleMessages.filter((m) => m.text.toLowerCase().includes(searchQuery.toLowerCase()))
-    : visibleMessages;
+  const filteredMessages = visibleMessages;
 
   return (
     <div className="h-full flex flex-col bg-[var(--bg-chat)] relative">
+      {/* Active note (above the user's profile/header) */}
+      <ChatNoteBanner userId={otherId} />
+
       {/* Header */}
-      <div className="px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 border-b border-[var(--border-primary)] bg-[var(--bg-card)]/80 backdrop-blur-xl flex-shrink-0">
-        <div className="flex items-center gap-2 sm:gap-3">
+      <div className="relative px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 border-b border-[var(--border-primary)] bg-[var(--bg-card)]/80 backdrop-blur-xl flex-shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
           {onBack && (
-            <motion.button whileTap={{ scale: 0.9 }} onClick={onBack} className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] transition-all md:hidden flex-shrink-0">
-              <HiOutlineArrowLeft className="w-5 h-5" />
+            <motion.button whileTap={{ scale: 0.9 }} onClick={onBack} aria-label="Back"
+              className="w-11 h-11 rounded-[12px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] transition-all md:hidden flex-shrink-0">
+              <HiOutlineArrowLeft className="w-[20px] h-[20px]" />
             </motion.button>
           )}
-          <button onClick={() => setShowProfileModal(true)} className="flex-1 min-w-0 flex items-center gap-3 text-left">
+          <button onClick={() => setShowProfileModal(true)} className="flex-1 min-w-0 flex items-center gap-2.5 sm:gap-3 text-left group/header">
             {otherUser ? (
               <>
                 <div className="relative flex-shrink-0">
                   {otherUser.photoURL ? (
-                    <img src={otherUser.photoURL} alt="" className="w-10 h-10 rounded-full object-cover ring-2 ring-[var(--border-primary)]" />
+                    <img src={otherUser.photoURL} alt="" className="w-11 h-11 sm:w-12 sm:h-12 rounded-full object-cover ring-2 ring-[var(--accent-glow)] shadow-[var(--accent-shadow)]" />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-gradient-end)] flex items-center justify-center text-white font-semibold text-[13px] ring-2 ring-[var(--border-primary)]">
+                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-gradient-end)] flex items-center justify-center text-white font-semibold text-[14px] ring-2 ring-[var(--accent-glow)] shadow-[var(--accent-shadow)]">
                       {otherUser.displayName?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
                     </div>
                   )}
-                  <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[var(--bg-card)] ${isOnline ? 'bg-[var(--success)]' : 'bg-[var(--text-muted)]'}`} />
+                  <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[var(--bg-card)] ${isOnline ? 'bg-[var(--success)]' : 'bg-[var(--text-muted)]'}`} />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="font-semibold text-[var(--text-primary)] text-[15px] truncate">{otherUser.displayName}</h3>
+                  <h3 className="font-semibold text-[var(--text-primary)] text-fluid-chat-title leading-tight truncate">{otherUser.displayName}</h3>
                   <p className={`text-[12px] truncate ${typing ? 'text-[var(--accent-primary)]' : isOnline ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'}`}>
                     {typing ? (
                       <span className="flex items-center gap-1">
@@ -422,7 +518,7 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
               </>
             ) : (
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[var(--bg-input)] animate-pulse" />
+                <div className="w-11 h-11 rounded-full bg-[var(--bg-input)] animate-pulse" />
                 <div className="space-y-1.5">
                   <div className="w-24 h-3.5 rounded bg-[var(--bg-input)] animate-pulse" />
                   <div className="w-16 h-2.5 rounded bg-[var(--bg-input)] animate-pulse" />
@@ -430,24 +526,26 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
               </div>
             )}
           </button>
-          <div className="flex items-center gap-1">
-            <motion.button whileTap={{ scale: 0.9 }} onClick={() => handleStartCall('voice')}
-              className="w-10 h-10 rounded-[12px] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--success)] hover:bg-[var(--success-bg)] transition-all">
-              <HiOutlinePhone className="w-[18px] h-[18px]" />
-            </motion.button>
-            <motion.button whileTap={{ scale: 0.9 }} onClick={() => handleStartCall('video')}
-              className="w-10 h-10 rounded-[12px] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--success)] hover:bg-[var(--success-bg)] transition-all">
-              <HiOutlineVideoCamera className="w-[18px] h-[18px]" />
-            </motion.button>
+          <div className="flex items-center gap-1 flex-shrink-0">
             <motion.button whileTap={{ scale: 0.9 }} onClick={() => setSearchOpen(!searchOpen)}
-              className={`w-10 h-10 rounded-[12px] flex items-center justify-center transition-all ${searchOpen ? 'text-[var(--accent-primary)] bg-[var(--accent-primary)]/10' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--hover-bg)]'}`}>
-              {searchOpen ? <HiOutlineXMark className="w-[18px] h-[18px]" /> : <HiOutlineMagnifyingGlass className="w-[18px] h-[18px]" />}
+              className={`w-11 h-11 rounded-[12px] flex items-center justify-center transition-all ${searchOpen ? 'text-[var(--accent-primary)] bg-[var(--accent-primary)]/10' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--hover-bg)]'}`}>
+              {searchOpen ? <HiOutlineXMark className="w-[20px] h-[20px]" /> : <HiOutlineMagnifyingGlass className="w-[20px] h-[20px]" />}
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.9 }} onClick={() => handleStartCall('voice')} aria-label="Voice call"
+              className="w-11 h-11 rounded-[12px] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--success)] hover:bg-[var(--success-bg)] transition-all">
+              <HiOutlinePhone className="w-[20px] h-[20px]" />
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.9 }} onClick={() => handleStartCall('video')} aria-label="Video call"
+              className="w-11 h-11 rounded-[12px] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--success)] hover:bg-[var(--success-bg)] transition-all">
+              <HiOutlineVideoCamera className="w-[20px] h-[20px]" />
             </motion.button>
             <ChatMenu
               conversationId={conversationId}
               conversation={conversation}
               otherUserId={otherId}
+              isBlocked={blockedByMe}
               onSearchOpen={() => setSearchOpen(true)}
+              onOpenInfo={() => setShowProfileModal(true)}
               onConversationDeleted={onConversationDeleted || (() => onBack?.())}
             />
           </div>
@@ -464,12 +562,28 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
               <HiOutlineMagnifyingGlass className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0" />
               <input autoFocus type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search in conversation..." className="flex-1 bg-transparent text-[var(--text-primary)] text-[13px] placeholder-[var(--text-muted)] focus:outline-none" />
-              {searchQuery && (
-                <span className="text-[11px] text-[var(--text-muted)]">
-                  {messages.filter((m) => m.text.toLowerCase().includes(searchQuery.toLowerCase())).length} results
-                </span>
+              {searchQuery.trim() && (
+                <>
+                  <span className="text-[11px] text-[var(--text-muted)] flex-shrink-0">
+                    {searchMatches.length === 0
+                      ? '0 results'
+                      : `${searchIndex + 1} / ${searchMatches.length}`}
+                  </span>
+                  <div className="flex items-center gap-0.5 flex-shrink-0">
+                    <motion.button whileTap={{ scale: 0.85 }} onClick={() => goToSearchMatch(-1)} disabled={searchMatches.length === 0}
+                      aria-label="Previous result"
+                      className="w-8 h-8 rounded-[8px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] disabled:opacity-30 transition-all">
+                      <HiOutlineChevronUp className="w-4 h-4" />
+                    </motion.button>
+                    <motion.button whileTap={{ scale: 0.85 }} onClick={() => goToSearchMatch(1)} disabled={searchMatches.length === 0}
+                      aria-label="Next result"
+                      className="w-8 h-8 rounded-[8px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] disabled:opacity-30 transition-all">
+                      <HiOutlineChevronDown className="w-4 h-4" />
+                    </motion.button>
+                  </div>
+                </>
               )}
-              <button onClick={() => { setSearchQuery(''); setSearchOpen(false); }} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+              <button onClick={() => { setSearchQuery(''); setSearchOpen(false); }} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] flex-shrink-0">
                 <HiOutlineXMark className="w-4 h-4" />
               </button>
             </div>
@@ -478,11 +592,11 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
       </AnimatePresence>
 
       {/* Messages */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto custom-scrollbar momentum-scroll py-3 sm:py-4 pb-24 sm:pb-28"
+      <div ref={containerRef} className="flex-1 overflow-y-auto custom-scrollbar momentum-scroll gpu-hint py-3 sm:py-4 pb-24 sm:pb-28"
         style={wallpaper?.css ? { backgroundImage: wallpaper.css, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
         {loading ? (
           <MessageSkeleton />
-        ) : filteredMessages.length === 0 && searchQuery.trim() ? (
+        ) : searchQuery.trim() && searchMatches.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full">
             <div className="w-16 h-16 rounded-[18px] bg-[var(--hover-bg)] flex items-center justify-center mb-4">
               <HiOutlineMagnifyingGlass className="w-8 h-8 text-[var(--text-muted)]" />
@@ -494,7 +608,7 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
             <motion.div
               animate={{ y: [0, -4, 0] }}
               transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-20 h-20 rounded-[22px] bg-gradient-to-br from-[var(--accent-primary)]/15 to-transparent flex items-center justify-center mb-5 border border-[var(--accent-primary)]/10"
+              className="w-20 h-20 rounded-[24px] bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/20 flex items-center justify-center mb-5"
             >
               <svg className="w-10 h-10 text-[var(--accent-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -515,11 +629,11 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
               const showDateSep = !prev || curDate !== prevDate;
 
               return (
-                <div key={msg.id}>
+                <div key={msg.id} className="content-visibility-auto">
                   {showDateSep && (
                     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
                       className="flex items-center justify-center my-4 px-4">
-                      <div className="px-3.5 py-1.5 rounded-full bg-[var(--bg-card)]/80 backdrop-blur-sm border border-[var(--border-primary)] text-[11px] font-medium text-[var(--text-muted)] shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
+                      <div className="px-3.5 py-1.5 rounded-full bg-[var(--bg-card)]/85 backdrop-blur-sm border border-[var(--border-primary)] text-[11px] font-medium text-[var(--text-muted)] shadow-[var(--shadow-sm)]">
                         {formatDateSeparator(msg.createdAt)}
                       </div>
                     </motion.div>
@@ -530,7 +644,9 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
                     onStar={handleStar} onDelete={handleDeleteForMe}
                     onDeleteForEveryone={handleDeleteForEveryone}
                     onEdit={handleEdit} onCopy={handleCopy}
-                    onScrollToMessage={scrollToMessage} />
+                    onScrollToMessage={scrollToMessage}
+                    onReact={handleReact} onPin={handlePin}
+                    highlight={searchQuery} />
                 </div>
               );
             })}
@@ -616,9 +732,9 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
             >
               <div className="flex flex-col items-center text-center mb-5">
                 {otherUser.photoURL ? (
-                  <img src={otherUser.photoURL} alt="" className="w-20 h-20 rounded-full object-cover ring-3 ring-[var(--border-primary)] mb-3" />
+                  <img src={otherUser.photoURL} alt="" className="w-20 h-20 rounded-full object-cover ring-3 ring-[var(--accent-glow)] mb-3" />
                 ) : (
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-gradient-end)] flex items-center justify-center text-white font-semibold text-xl ring-3 ring-[var(--border-primary)] mb-3">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-gradient-end)] flex items-center justify-center text-white font-semibold text-xl ring-3 ring-[var(--accent-glow)] mb-3">
                     {otherUser.displayName?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
                   </div>
                 )}

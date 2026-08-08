@@ -175,6 +175,14 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Temporary 24h notes (one per user at notes/{userId}). Readable by any
+    // authenticated user so the recipient can see the note above the chat
+    // header; writable only by the owner. Only the owner may forge/edit/delete.
+    match /notes/{userId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
     // Deny everything else
     match /{document=**} {
       allow read, write: if false;
