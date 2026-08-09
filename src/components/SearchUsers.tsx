@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlineXMark, HiOutlineMagnifyingGlass, HiOutlineUserGroup } from 'react-icons/hi2';
 import { searchUsers, createConversation } from '@/services/firestore';
 import { useAuth } from '@/context/AuthContext';
+import { getDisplayName } from '@/utils/userDisplay';
 import { isOnlineNow } from '@/services/presence';
 import UserAvatar from '@/components/UserAvatar';
 import GroupCreator from '@/components/GroupCreator';
@@ -126,9 +127,9 @@ export default function SearchUsers({ isOpen, onClose, onConversationCreated }: 
                   disabled={creating === u.uid}
                   className="w-full flex items-center gap-3.5 px-5 py-3.5 hover:bg-[var(--hover-bg)] active:bg-[var(--hover-bg-strong)] transition-colors disabled:opacity-50 cursor-pointer"
                 >
-                  <UserAvatar photoURL={u.photoURL} displayName={u.displayName} size="md" online={isOnlineNow(u)} />
+                  <UserAvatar photoURL={u.photoURL} displayName={getDisplayName(u)} size="md" online={isOnlineNow(u)} />
                   <div className="text-left flex-1 min-w-0">
-                    <p className="font-medium text-[var(--text-primary)] text-[15px] truncate">{u.displayName}</p>
+                    <p className="font-medium text-[var(--text-primary)] text-[15px] truncate">{getDisplayName(u)}</p>
                     <p className="text-[var(--text-secondary)] text-[13px] truncate">{u.phone || u.email}</p>
                   </div>
                   {creating === u.uid && <div className="w-5 h-5 border-2 border-[var(--text-muted)]/30 border-t-[var(--accent-primary)] rounded-full animate-spin" />}

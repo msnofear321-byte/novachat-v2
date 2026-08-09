@@ -26,6 +26,7 @@ import {
 } from '@/services/firestore';
 import { doc, onSnapshot, writeBatch } from 'firebase/firestore';
 import { getConversationOtherId } from '@/utils/chatNavigation';
+import { getDisplayName } from '@/utils/userDisplay';
 import { auth, db } from '@/services/firebase';
 import { uploadToCloudinary, getFileType, getMediaDownloadURL } from '@/services/cloudinary';
 import { showBrowserNotification } from '@/services/notifications';
@@ -101,6 +102,8 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
     () => getConversationOtherId(conversationId, user?.uid, conversation),
     [conversationId, user?.uid, conversation],
   );
+
+  const otherDisplayName = useMemo(() => getDisplayName(otherUser, 'User'), [otherUser]);
 
   const [clock, setClock] = useState(() => Date.now());
 
@@ -468,7 +471,7 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
     window.dispatchEvent(new CustomEvent('call-start', {
       detail: {
         receiverId: otherId,
-        receiverName: otherUser.displayName,
+        receiverName: otherDisplayName,
         receiverPhoto: otherUser.photoURL,
         type,
       },
@@ -487,7 +490,7 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
           {onBack && (
             <motion.button whileTap={{ scale: 0.9 }} onClick={onBack} aria-label="Back"
-              className="w-11 h-11 rounded-[12px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] transition-all md:hidden flex-shrink-0">
+              className="w-11 h-11 rounded-[12px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] transition-all flex-shrink-0">
               <HiOutlineArrowLeft className="w-[20px] h-[20px]" />
             </motion.button>
           )}
@@ -499,13 +502,13 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
                     <img src={otherUser.photoURL} alt="" className="w-11 h-11 sm:w-12 sm:h-12 rounded-full object-cover ring-2 ring-[var(--accent-glow)] shadow-[var(--accent-shadow)]" />
                   ) : (
                     <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-gradient-end)] flex items-center justify-center text-white font-semibold text-[14px] ring-2 ring-[var(--accent-glow)] shadow-[var(--accent-shadow)]">
-                      {otherUser.displayName?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
+                      {otherDisplayName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
                     </div>
                   )}
                   <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[var(--bg-card)] ${isOnline ? 'bg-[var(--success)]' : 'bg-[var(--text-muted)]'}`} />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="font-semibold text-[var(--text-primary)] text-fluid-chat-title leading-tight truncate">{otherUser.displayName}</h3>
+                  <h3 className="font-semibold text-[var(--text-primary)] text-fluid-chat-title leading-tight truncate">{otherDisplayName}</h3>
                   <p className={`text-[12px] truncate ${typing ? 'text-[var(--accent-primary)]' : isOnline ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'}`}>
                     {typing ? (
                       <span className="flex items-center gap-1">
@@ -592,7 +595,7 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
       </AnimatePresence>
 
       {/* Messages */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto custom-scrollbar momentum-scroll gpu-hint py-3 sm:py-4 pb-24 sm:pb-28"
+      <div ref={containerRef} className="flex-1 overflow-y-auto custom-scrollbar momentum-scroll gpu-hint px-2 sm:px-3 py-3 sm:py-4 pb-24 sm:pb-28"
         style={wallpaper?.css ? { backgroundImage: wallpaper.css, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
         {loading ? (
           <MessageSkeleton />
@@ -639,7 +642,8 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
                     </motion.div>
                   )}
                   <MessageBubble message={msg} isOwn={isOwn} showSender={showSender}
-                    senderName={isOwn ? user?.displayName ?? undefined : otherUser?.displayName}
+                    senderName={isOwn ? (user?.displayName?.trim() || undefined) : (otherDisplayName || undefined)}
+                    otherUserName={otherDisplayName}
                     onReply={setReplyTo} onForward={setForwardMsg}
                     onStar={handleStar} onDelete={handleDeleteForMe}
                     onDeleteForEveryone={handleDeleteForEveryone}
@@ -692,7 +696,7 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
       {/* Reply preview + Input */}
       <div className="flex-shrink-0">
         <AnimatePresence>
-          <ReplyPreview replyTo={replyTo} onCancel={() => setReplyTo(null)} otherUserName={otherUser?.displayName} />
+          <ReplyPreview replyTo={replyTo} onCancel={() => setReplyTo(null)} otherUserName={otherDisplayName} />
         </AnimatePresence>
 
         {!blockedByMe && (
@@ -735,10 +739,10 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
                   <img src={otherUser.photoURL} alt="" className="w-20 h-20 rounded-full object-cover ring-3 ring-[var(--accent-glow)] mb-3" />
                 ) : (
                   <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-gradient-end)] flex items-center justify-center text-white font-semibold text-xl ring-3 ring-[var(--accent-glow)] mb-3">
-                    {otherUser.displayName?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
+                    {otherDisplayName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
                   </div>
                 )}
-                <h3 className="text-[17px] font-bold text-[var(--text-primary)]">{otherUser.displayName}</h3>
+                <h3 className="text-[17px] font-bold text-[var(--text-primary)]">{otherDisplayName}</h3>
                 <div className={`inline-flex items-center gap-1.5 mt-1 px-3 py-0.5 rounded-full text-[11px] font-medium ${isOnline ? 'bg-[var(--success)]/10 text-[var(--success)]' : 'bg-[var(--bg-input)] text-[var(--text-muted)]'}`}>
                   {isOnline ? (
                     <><div className="w-1.5 h-1.5 rounded-full bg-[var(--success)]" /> Online</>

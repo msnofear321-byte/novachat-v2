@@ -9,6 +9,7 @@ import {
 } from 'react-icons/hi2';
 import { useAuth } from '@/context/AuthContext';
 import { useUnread } from '@/context/UnreadContext';
+import { getDisplayName } from '@/utils/userDisplay';
 import UserAvatar from '@/components/UserAvatar';
 import SearchUsers from '@/components/SearchUsers';
 
@@ -32,11 +33,18 @@ function isTabActive(path: string, pathname: string) {
 }
 
 export default function TopNavigation() {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const { totalUnread } = useUnread();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
+
+  const profileName = getDisplayName({
+    displayName: userProfile?.displayName ?? user?.displayName,
+    username: userProfile?.username,
+    phone: userProfile?.phone ?? user?.phoneNumber,
+    email: userProfile?.email ?? user?.email,
+  });
 
   function handleConversationCreated(id: string) {
     if (id.startsWith('group_')) {
@@ -81,9 +89,12 @@ export default function TopNavigation() {
             whileTap={{ scale: 0.9 }}
             onClick={() => navigate('/profile')}
             aria-label="Open profile"
-            className="w-12 h-12 flex items-center justify-center"
+            className="flex items-center gap-2 pl-2 sm:pl-2.5 h-12 rounded-[13px] hover:bg-[var(--hover-bg)] transition-all max-w-[120px] sm:max-w-[200px]"
           >
-            <UserAvatar photoURL={user?.photoURL ?? undefined} displayName={user?.displayName || '?'} size="md" />
+            <span className="min-w-0 text-[13px] sm:text-[14px] font-semibold text-[var(--text-primary)] truncate">
+              {profileName}
+            </span>
+            <UserAvatar photoURL={user?.photoURL ?? undefined} displayName={profileName} size="md" />
           </motion.button>
         </div>
       </div>

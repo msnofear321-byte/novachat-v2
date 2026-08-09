@@ -11,6 +11,7 @@ import { useUnread } from '@/context/UnreadContext';
 import { useAuth } from '@/context/AuthContext';
 import { getAllUsers, searchUsers } from '@/services/firestore';
 import { openConversationWithUser } from '@/utils/chatNavigation';
+import { getDisplayName } from '@/utils/userDisplay';
 import { isOnlineNow } from '@/services/presence';
 import { isPhoneQuery } from '@/utils/phone';
 import UserAvatar from '@/components/UserAvatar';
@@ -120,11 +121,11 @@ export default function HomePage() {
       {/* Chat list panel */}
       <div
         className={`flex-shrink-0 h-full border-r border-[var(--border-primary)] flex-col bg-[var(--bg-sidebar)] ${
-          isMobile
-            ? activeConversationId
-              ? 'hidden'
-              : 'flex w-full'
-            : 'flex w-[320px] lg:w-[380px]'
+          activeConversationId
+            ? 'hidden'
+            : isMobile
+              ? 'flex w-full'
+              : 'flex w-[320px] lg:w-[380px]'
         }`}
       >
         {/* Search bar */}
@@ -166,9 +167,9 @@ export default function HomePage() {
                     disabled={openingUserId === u.uid}
                     className="w-full flex items-center gap-3.5 px-5 py-3 text-left hover:bg-[var(--hover-bg)] active:bg-[var(--hover-bg-strong)] transition-colors cursor-pointer disabled:opacity-60"
                   >
-                    <UserAvatar photoURL={u.photoURL} displayName={u.displayName || '?'} size="md" online={isOnlineNow(u)} />
+                    <UserAvatar photoURL={u.photoURL} displayName={getDisplayName(u)} size="md" online={isOnlineNow(u)} />
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-[var(--text-primary)] text-[15px] truncate">{u.displayName}</p>
+                      <p className="font-medium text-[var(--text-primary)] text-[15px] truncate">{getDisplayName(u)}</p>
                       {u.phone
                         ? <p className="text-[var(--text-secondary)] text-[12px] truncate">{u.phone}</p>
                         : u.email && <p className="text-[var(--text-secondary)] text-[12px] truncate">{u.email}</p>}
@@ -279,13 +280,13 @@ export default function HomePage() {
               <GroupChatPage
                 groupId={activeConversationId}
                 key={activeConversationId}
-                onBack={isMobile ? handleBack : undefined}
+                onBack={handleBack}
               />
             ) : (
               <ChatPage
                 conversationId={activeConversationId}
                 key={activeConversationId}
-                onBack={isMobile ? handleBack : undefined}
+                onBack={handleBack}
                 onConversationDeleted={handleConversationDeleted}
               />
             )}
@@ -310,14 +311,14 @@ export default function HomePage() {
                   <div className="py-2">
                     {allUsers.map((u) => (
                       <button
-                        key={u.uid || `${u.displayName || 'user'}-${u.email || 'no-email'}`}
+                        key={u.uid || `${getDisplayName(u) || 'user'}-${u.email || 'no-email'}`}
                         onClick={() => openConversation(u.uid)}
                         disabled={openingUserId === u.uid}
                         className="w-full flex items-center gap-3 px-6 py-3 text-left hover:bg-[var(--hover-bg)] active:bg-[var(--hover-bg-strong)] transition-colors cursor-pointer disabled:opacity-60"
                       >
-                        <UserAvatar photoURL={u.photoURL} displayName={u.displayName || '?'} size="md" />
+                        <UserAvatar photoURL={u.photoURL} displayName={getDisplayName(u)} size="md" />
                         <div className="min-w-0">
-                          <p className="text-[15px] font-semibold text-[var(--text-primary)] truncate">{u.displayName}</p>
+                          <p className="text-[15px] font-semibold text-[var(--text-primary)] truncate">{getDisplayName(u)}</p>
                           {u.email && <p className="text-[12px] text-[var(--text-muted)] truncate">{u.email}</p>}
                         </div>
                         {openingUserId === u.uid && (

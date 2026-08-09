@@ -174,8 +174,32 @@ export async function registerWithEmail(
   return result;
 }
 
+function getResetPasswordErrorMessage(code: string): string {
+  switch (code) {
+    case 'auth/invalid-email':
+      return 'Please enter a valid email address.';
+    case 'auth/user-not-found':
+      return 'No account found with this email. Please check the address and try again.';
+    case 'auth/too-many-requests':
+      return 'Too many requests. Please wait a moment and try again.';
+    case 'auth/network-request-failed':
+      return 'Network error. Please check your connection and try again.';
+    default:
+      return 'Failed to send the reset email. Please try again.';
+  }
+}
+
 export async function resetPassword(email: string): Promise<void> {
-  return sendPasswordResetEmail(auth, email);
+  const trimmedEmail = email.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+    throw new Error('Please enter a valid email address.');
+  }
+  try {
+    await sendPasswordResetEmail(auth, trimmedEmail);
+  } catch (err: unknown) {
+    const code = (err as { code?: string }).code || '';
+    throw new Error(getResetPasswordErrorMessage(code));
+  }
 }
 
 export async function logout(): Promise<void> {

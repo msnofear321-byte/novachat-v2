@@ -9,6 +9,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/services/firebase';
 import UserAvatar from '@/components/UserAvatar';
 import MusicStatusCard from '@/components/MusicStatusCard';
+import { getDisplayName } from '@/utils/userDisplay';
 import type { User } from '@/types';
 
 export default function ProfilePage() {
@@ -33,7 +34,7 @@ export default function ProfilePage() {
     const unsub = onSnapshot(doc(db, 'users', user.uid), (snap) => {
       if (snap.exists()) {
         const data = snap.data() as User;
-        setDisplayName(data.displayName || '');
+        setDisplayName(data.displayName || user?.displayName || '');
         setAbout(data.about || '');
         setPhone(data.phone || '');
         if (data.photoURL !== undefined) setPhotoURL(data.photoURL);
@@ -78,6 +79,13 @@ export default function ProfilePage() {
 
   const isOnline = isOnlineNow(userProfile, now);
 
+  const profileDisplayName = getDisplayName({
+    displayName: displayName.trim() || user?.displayName || undefined,
+    username: userProfile?.username,
+    phone: userProfile?.phone || undefined,
+    email: userProfile?.email || user?.email,
+  });
+
   return (
     <div className="h-full overflow-y-auto custom-scrollbar bg-[var(--bg-primary)]">
       <div className="max-w-[600px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -90,7 +98,7 @@ export default function ProfilePage() {
         <div className="flex flex-col items-center mb-8">
           <div className="relative group mb-4">
             <div className="relative">
-              <UserAvatar photoURL={photoURL || undefined} displayName={user?.displayName || '?'} size="lg" />
+              <UserAvatar photoURL={photoURL || undefined} displayName={profileDisplayName} size="lg" />
               {isOnline && (
                 <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[var(--success)] border-[3px] border-[var(--bg-primary)]" />
               )}
@@ -105,6 +113,9 @@ export default function ProfilePage() {
             </button>
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
           </div>
+          <h2 className="text-[22px] sm:text-[24px] font-bold text-[var(--text-primary)] mb-1 text-center truncate max-w-full px-2">
+            {profileDisplayName}
+          </h2>
           <p className="text-[var(--accent-primary)] text-[13px] font-medium">Tap photo to change</p>
           {photoURL && (
             <button onClick={handleRemovePhoto}
@@ -174,7 +185,7 @@ export default function ProfilePage() {
                 <span className="text-[14px] text-[var(--text-secondary)]">Member since</span>
               </div>
               <span className="text-[13px] text-[var(--text-muted)]">
-                {userProfile?.createdAt ? new Date(userProfile.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : 'Unknown'}
+                {userProfile?.createdAt ? new Date(userProfile.createdAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : 'Recently'}
               </span>
             </div>
           </div>

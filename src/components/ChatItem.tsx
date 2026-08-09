@@ -1,6 +1,7 @@
 import { memo, useRef } from 'react';
 import UserAvatar from '@/components/UserAvatar';
 import { isOnlineNow } from '@/services/presence';
+import { getDisplayName } from '@/utils/userDisplay';
 import { useAuth } from '@/context/AuthContext';
 import type { Conversation, User } from '@/types';
 import { motion } from 'framer-motion';
@@ -44,7 +45,10 @@ function ChatItem({ conversation, otherUser, online, isActive, onSelect, isTypin
   const isGroup = conversation.type === 'group';
   const isOnline = isGroup ? false : (online ?? isOnlineNow(otherUser));
   const lastMsg = conversation.lastMessage || 'No messages yet';
-  const title = isGroup ? (conversation.name || 'Group') : (otherUser?.displayName || 'Unknown');
+  // The other user's doc may not have loaded yet; show a skeleton instead of a
+  // placeholder label, and never display "Unknown" once a real identity exists.
+  const userLoading = !isGroup && !otherUser;
+  const title = isGroup ? (conversation.name || 'Group') : getDisplayName(otherUser);
 
   // Prefer per-user unread. If the last message in the conversation is our own
   // we have already read everything up to it, so hide the badge.
@@ -121,7 +125,7 @@ function ChatItem({ conversation, otherUser, online, isActive, onSelect, isTypin
         ) : (
           <UserAvatar
             photoURL={otherUser?.photoURL}
-            displayName={otherUser?.displayName || '?'}
+            displayName={getDisplayName(otherUser)}
             size="md"
             online={isOnline}
           />
@@ -130,9 +134,13 @@ function ChatItem({ conversation, otherUser, online, isActive, onSelect, isTypin
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-1">
-          <h3 className={`font-semibold text-[15px] sm:text-[17px] truncate ${isActive ? 'text-[var(--accent-primary)]' : 'text-[var(--text-primary)]'}`}>
-            {title}
-          </h3>
+          {userLoading ? (
+            <div className="h-4 w-28 rounded-[6px] bg-[var(--hover-bg)] animate-pulse" />
+          ) : (
+            <h3 className={`font-semibold text-[15px] sm:text-[17px] truncate ${isActive ? 'text-[var(--accent-primary)]' : 'text-[var(--text-primary)]'}`}>
+              {title}
+            </h3>
+          )}
           <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0 ml-2">
             {conversation.pinned && (
               <HiOutlineMapPin className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-[var(--accent-primary)] rotate-45" />
@@ -153,7 +161,7 @@ function ChatItem({ conversation, otherUser, online, isActive, onSelect, isTypin
               <span className="typing-dots">
                 <span /><span /><span />
               </span>
-              <span className="text-[13px] sm:text-[14px] text-[var(--accent-primary)] font-medium">typing...</span>
+              <span className="text-[13px] sm:text-[14px] text-[var(--accent-primary)] font-medium">typing</span>
             </div>
           ) : (
             <p className={`text-[13px] sm:text-[14px] truncate flex-1 min-w-0 mr-2 ${

@@ -14,6 +14,7 @@ interface MessageBubbleProps {
   isOwn: boolean;
   showSender: boolean;
   senderName?: string;
+  otherUserName?: string;
   onReply: (msg: Message) => void;
   onForward: (msg: Message) => void;
   onStar: (msg: Message) => void;
@@ -50,7 +51,7 @@ function highlightText(text: string, highlight: string): React.ReactNode {
 }
 
 function MessageBubble({
-  message, isOwn, showSender, senderName,
+  message, isOwn, showSender, senderName, otherUserName,
   onReply, onForward, onStar, onDelete, onDeleteForEveryone, onEdit, onCopy, onScrollToMessage, onReact, onPin, highlight,
 }: MessageBubbleProps) {
   const { user } = useAuth();
@@ -209,7 +210,7 @@ function MessageBubble({
   if (message.deleted || message.deletedForEveryone) {
     return (
       <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
-        className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-2 sm:px-4 mb-1`}>
+        className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-1 sm:px-1.5 mb-1`}>
         <div className="px-4 py-2.5 bg-[var(--bg-input)] rounded-[16px] sm:rounded-[18px] border border-[var(--border-primary)] max-w-[85%] sm:max-w-[70%]">
           <p className="text-[13px] italic text-[var(--text-muted)]">
             {message.deletedForEveryone
@@ -328,7 +329,7 @@ function MessageBubble({
       initial={{ opacity: 0, y: 6, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-      className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-2 sm:px-4 mb-1 group`}
+      className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-1 sm:px-1.5 mb-1 group`}
       data-message-id={message.id}
       onPointerDown={handlePressStart}
       onPointerMove={handlePressMove}
@@ -337,7 +338,7 @@ function MessageBubble({
       onPointerLeave={handlePressEnd}
       onContextMenu={handleContextMenu}
     >
-      <div className={`relative max-w-[85%] sm:max-w-[75%] md:max-w-[70%] min-w-0 ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}>
+      <div className={`relative max-w-[82%] sm:max-w-[80%] md:max-w-[75%] min-w-0 ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}>
         {showSender && !isOwn && (
           <span className="text-[11px] font-semibold text-[var(--accent-primary)] mb-1 ml-1">{senderName}</span>
         )}
@@ -350,7 +351,7 @@ function MessageBubble({
             }`}
           >
             <p className="text-[11px] font-medium text-[var(--accent-secondary)]">
-              {message.replyTo.senderId === user?.uid ? 'You' : senderName || 'User'}
+              {message.replyTo.senderId === user?.uid ? 'You' : otherUserName || senderName || 'User'}
             </p>
             <p className="text-[12px] text-[var(--text-secondary)] truncate">
               {message.replyTo.type === 'text' ? message.replyTo.text : `📎 ${message.replyTo.type}`}

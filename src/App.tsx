@@ -102,7 +102,7 @@ function AppRoutes() {
   if (user) {
     return (
       <div className="app-frame">
-        <TopNavigation />
+        {!isChatOpen && <TopNavigation />}
         <main className="app-page">
           <AnimatePresence mode="popLayout" initial={false} custom={direction}>
             <motion.div
@@ -115,13 +115,16 @@ function AppRoutes() {
               transition={pageTransition}
               drag={swipeEnabled ? 'x' : false}
               dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={{ left: 0.18, right: 0.18 }}
+              dragElastic={{ left: 1, right: 1 }}
+              dragSnapToOrigin
               dragMomentum={false}
+              style={{ touchAction: 'pan-y' }}
               onDragEnd={(_, info) => {
                 if (!swipeEnabled) return;
                 const w = window.innerWidth || 1;
-                const swipedLeft = info.offset.x < -w * 0.18 || info.velocity.x < -500;
-                const swipedRight = info.offset.x > w * 0.18 || info.velocity.x > 500;
+                const threshold = w * 0.15;
+                const swipedLeft = info.offset.x < -threshold || info.velocity.x < -400;
+                const swipedRight = info.offset.x > threshold || info.velocity.x > 400;
                 if (swipedLeft) handleSwipe(1);
                 else if (swipedRight) handleSwipe(-1);
               }}

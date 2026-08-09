@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlineHeart, HiOutlineEye, HiOutlinePlus, HiOutlineTrash, HiOutlinePencilSquare, HiOutlineSparkles } from 'react-icons/hi2';
-import { subscribeToStories, deleteStory, type Story } from '@/services/status';
+import { subscribeToStories, deleteStory, getSeenList, type Story } from '@/services/status';
 import { subscribeToMyNote, deleteMyNote, isNoteActive, formatExpiresIn, type ChatNote } from '@/services/tempNotes';
+import { getDisplayName } from '@/utils/userDisplay';
 import { useAuth } from '@/context/AuthContext';
 import UserAvatar from '@/components/UserAvatar';
 import StatusViewer from '@/components/StatusViewer';
@@ -12,6 +13,7 @@ import NoteComposer from '@/components/NoteComposer';
 export default function StatusPage() {
   const { user } = useAuth();
   const [stories, setStories] = useState<Story[]>([]);
+  const [statusNow, setStatusNow] = useState(() => Date.now());
   const [viewingKey, setViewingKey] = useState<string>('');
   const [viewingStories, setViewingStories] = useState<Story[]>([]);
   const [viewingIndex, setViewingIndex] = useState(0);
@@ -35,8 +37,11 @@ export default function StatusPage() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setNoteNow(Date.now());
-      // Best-effort cleanup: an expired own note must not linger in Firestore.
+      const now = Date.now();
+      setNoteNow(now);
+      setStatusNow(now);
+      // Best-effort cleanup: an expired own note or story must not linger in
+      // Firestore even though the UI already stops showing it.
       setMyNote((current) => {
         if (current && !isNoteActive(current)) {
           deleteMyNote().catch(() => {});
@@ -44,9 +49,16 @@ export default function StatusPage() {
         }
         return current;
       });
+      setStories((current) => {
+        const expiredMine = current.filter(
+          (s) => s.expiresAt <= now && s.userId === user?.uid,
+        );
+        expiredMine.forEach((s) => deleteStory(s.id).catch(() => {}));
+        return current.filter((s) => s.expiresAt > now);
+      });
     }, 30_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user?.uid]);
 
   const handleDeleteNote = useCallback(async () => {
     try {
@@ -63,8 +75,10 @@ export default function StatusPage() {
     };
   }, []);
 
-  const myStories = stories.filter((s) => s.userId === user?.uid);
-  const otherStories = stories.filter((s) => s.userId !== user?.uid);
+  // Stories are re-filtered against `statusNow` (a 30s ticker) so they drop
+  // from the UI at the exact 24h expiry even when Firestore has no new writes.
+  const myStories = stories.filter((s) => s.userId === user?.uid && s.expiresAt > statusNow);
+  const otherStories = stories.filter((s) => s.userId !== user?.uid && s.expiresAt > statusNow);
 
   const groupedOthers = otherStories.reduce<Record<string, Story[]>>((acc, s) => {
     (acc[s.userId] = acc[s.userId] || []).push(s);
@@ -95,6 +109,27 @@ export default function StatusPage() {
 
     setUndoToast({ story, timer });
   }, []);
+
+  const handleSeeViewers = useCallback(async () => {
+    const seenUsers = new Map<string, string>();
+    for (const s of myStories) {
+      try {
+        const list = await getSeenList(s.id);
+        list.forEach((v) => seenUsers.set(v.uid, v.name));
+      } catch {
+        // skip this story's viewers
+      }
+    }
+    const viewers = [...seenUsers.entries()];
+    if (viewers.length === 0) {
+      alert('No views yet');
+      return;
+    }
+    alert(
+      `Viewed by ${viewers.length} ${viewers.length === 1 ? 'person' : 'people'}: ` +
+      viewers.map(([, name]) => name).join(', '),
+    );
+  }, [myStories]);
 
   const handleUndoDelete = useCallback(() => {
     if (!undoRef.current) return;
@@ -191,8 +226,8 @@ export default function StatusPage() {
               <button onClick={() => openViewer(groupedMine[user!.uid], 0)}
                 className="w-full flex items-center gap-4 p-4 hover:bg-[var(--hover-bg)] transition-all text-left">
                 <div className="relative">
-                  <UserAvatar photoURL={user?.photoURL ?? undefined} displayName={user?.displayName || '?'} size="lg" />
-                  <div className="absolute inset-0 rounded-full border-2 border-[var(--accent-primary)]" />
+                  <UserAvatar photoURL={user?.photoURL ?? undefined} displayName={getDisplayName({ displayName: user?.displayName, email: user?.email, phone: user?.phoneNumber }) || '?'} size="lg" />
+                  <div className="absolute inset-0 rounded-full border-2 border-white" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[16px] font-medium text-[var(--text-primary)]">My Status</p>
@@ -260,9 +295,7 @@ export default function StatusPage() {
                     <button onClick={() => openViewer(userStories, 0)} className="flex items-center gap-4 flex-1 min-w-0 text-left">
                       <div className="relative">
                         <UserAvatar photoURL={first.userPhoto} displayName={first.userName} size="lg" />
-                        {hasUnseen && (
-                          <div className="absolute inset-0 rounded-full border-2 border-[var(--accent-primary)]" />
-                        )}
+                        <div className={`absolute inset-0 rounded-full border-2 ${hasUnseen ? 'border-white' : 'border-white/25'}`} />
                       </div>
                       <div className="min-w-0">
                         <p className="text-[16px] font-medium text-[var(--text-primary)] truncate">{first.userName}</p>
@@ -292,23 +325,7 @@ export default function StatusPage() {
         {/* View detail button for my stories */}
         {myStories.length > 0 && (
           <div className="mt-4">
-            <button onClick={() => {
-              const seenUsers = new Set<string>();
-              const viewers: { uid: string; name: string }[] = [];
-              myStories.forEach((s) => {
-                (s.seenBy || []).forEach((uid) => {
-                  if (!seenUsers.has(uid)) {
-                    seenUsers.add(uid);
-                    viewers.push({ uid, name: uid });
-                  }
-                });
-              });
-              if (viewers.length > 0) {
-                alert(`Viewed by ${viewers.length} ${viewers.length === 1 ? 'person' : 'people'}`);
-              } else {
-                alert('No views yet');
-              }
-            }}
+            <button onClick={handleSeeViewers}
               className="w-full premium-card premium-card-hover p-4 flex items-center justify-center gap-2 text-[var(--accent-primary)] text-[14px] font-medium hover:bg-[var(--hover-bg)] transition-all">
               <HiOutlineEye className="w-4.5 h-4.5" />
               See who viewed your status

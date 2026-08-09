@@ -59,21 +59,24 @@ function TypingText({ text, delay = 0 }: { text: string; delay?: number }) {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | undefined;
     let idx = 0;
     setDisplayed('');
     setDone(false);
     const start = setTimeout(() => {
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         idx++;
         setDisplayed(text.slice(0, idx));
         if (idx >= text.length) {
-          clearInterval(interval);
+          if (interval) clearInterval(interval);
           setDone(true);
         }
       }, 45);
-      return () => clearInterval(interval);
     }, delay);
-    return () => clearTimeout(start);
+    return () => {
+      clearTimeout(start);
+      if (interval) clearInterval(interval);
+    };
   }, [text, delay]);
 
   return (
@@ -128,14 +131,25 @@ export default function AuthPage() {
   const [error, setError] = useState('');
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>(EMPTY_ERRORS);
+  const [loginErrors, setLoginErrors] = useState<{ email: string; password: string }>({ email: '', password: '' });
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [regSuccess, setRegSuccess] = useState(false);
   const googleBtnRef = useRef<HTMLButtonElement>(null);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const later = useCallback((fn: () => void, ms: number) => {
+    const t = setTimeout(fn, ms);
+    timersRef.current.push(t);
+  }, []);
+
+  useEffect(() => {
+    return () => timersRef.current.forEach((t) => clearTimeout(t));
+  }, []);
 
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'error') => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
-  }, []);
+    later(() => setToast(null), 4000);
+  }, [later]);
 
   function toggleMode() {
     setMode((m) => (m === 'login' ? 'register' : 'login'));
@@ -143,21 +157,26 @@ export default function AuthPage() {
     setToast(null);
     setFieldErrors(EMPTY_ERRORS);
     setTouched({});
+    setLoginErrors({ email: '', password: '' });
     setRegSuccess(false);
   }
 
   async function handleLogin(e: FormEvent) {
     e.preventDefault();
     setError('');
+    const emailErr = validateEmail(loginEmail);
+    const passwordErr = loginPassword ? '' : 'Password is required';
+    setLoginErrors({ email: emailErr, password: passwordErr });
+    if (emailErr || passwordErr) return;
+
     setLoading(true);
     try {
       await loginWithEmail(loginEmail, loginPassword);
       showToast('Welcome back!', 'success');
-      setTimeout(() => navigate('/', { replace: true }), 300);
+      later(() => navigate('/', { replace: true }), 300);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to login';
       setError(message);
-      showToast(message, 'error');
     } finally {
       setLoading(false);
     }
@@ -169,11 +188,10 @@ export default function AuthPage() {
     try {
       await loginWithGoogle();
       showToast('Welcome back!', 'success');
-      setTimeout(() => navigate('/', { replace: true }), 300);
+      later(() => navigate('/', { replace: true }), 300);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to login with Google';
       setError(message);
-      showToast(message, 'error');
     } finally {
       setLoading(false);
     }
@@ -240,7 +258,7 @@ export default function AuthPage() {
     try {
       await registerWithEmail(regEmail.trim(), regPassword, regName.trim());
       setRegSuccess(true);
-      setTimeout(() => navigate('/', { replace: true }), 1500);
+      later(() => navigate('/', { replace: true }), 1500);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Registration failed. Please try again.';
       setError(message);
@@ -418,12 +436,28 @@ export default function AuthPage() {
                         <input
                           type="email"
                           value={loginEmail}
-                          onChange={(e) => setLoginEmail(e.target.value)}
+                          onChange={(e) => {
+                            setLoginEmail(e.target.value);
+                            if (loginErrors.email) setLoginErrors((p) => ({ ...p, email: '' }));
+                          }}
                           placeholder="name@example.com"
                           required
-                          className={inputClass(false)}
+                          autoComplete="email"
+                          className={inputClass(!!loginErrors.email)}
                         />
                       </div>
+                      <AnimatePresence>
+                        {loginErrors.email && (
+                          <motion.p
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="text-[var(--danger)] text-[12px] mt-1.5 ml-1"
+                          >
+                            {loginErrors.email}
+                          </motion.p>
+                        )}
+                      </AnimatePresence>
                     </motion.div>
 
                     {/* Password */}
@@ -434,10 +468,14 @@ export default function AuthPage() {
                         <input
                           type={showLoginPassword ? 'text' : 'password'}
                           value={loginPassword}
-                          onChange={(e) => setLoginPassword(e.target.value)}
+                          onChange={(e) => {
+                            setLoginPassword(e.target.value);
+                            if (loginErrors.password) setLoginErrors((p) => ({ ...p, password: '' }));
+                          }}
                           placeholder="Enter your password"
                           required
-                          className={`${inputClass(false)} !pr-12`}
+                          autoComplete="current-password"
+                          className={`${inputClass(!!loginErrors.password)} !pr-12`}
                         />
                         <button
                           type="button"
@@ -447,6 +485,18 @@ export default function AuthPage() {
                           {showLoginPassword ? <AiOutlineEyeInvisible className="w-[18px] h-[18px]" /> : <AiOutlineEye className="w-[18px] h-[18px]" />}
                         </button>
                       </div>
+                      <AnimatePresence>
+                        {loginErrors.password && (
+                          <motion.p
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="text-[var(--danger)] text-[12px] mt-1.5 ml-1"
+                          >
+                            {loginErrors.password}
+                          </motion.p>
+                        )}
+                      </AnimatePresence>
                     </motion.div>
 
                     {/* Forgot Password */}

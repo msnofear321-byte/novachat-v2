@@ -1,8 +1,12 @@
 export interface User {
   uid: string;
   displayName: string;
+  /** Optional username used as a display-name fallback. */
+  username?: string;
   email: string;
   photoURL: string;
+  /** Uids this user considers contacts (status "Contacts" privacy). */
+  contacts?: string[];
   /**
    * Real-time presence. `true` only while the app is open, visible and online
    * (maintained by the heartbeat). A reader must treat the user as offline

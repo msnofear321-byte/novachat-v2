@@ -6,6 +6,7 @@ import {
 } from 'react-icons/hi2';
 import { uploadToCloudinary } from '@/services/cloudinary';
 import { useAuth } from '@/context/AuthContext';
+import { getDisplayName } from '@/utils/userDisplay';
 import { upsertMusicNote } from '@/services/musicNotes';
 
 interface MusicNoteUploadProps {
@@ -98,7 +99,7 @@ export default function MusicNoteUpload({ isOpen, onClose }: MusicNoteUploadProp
 
       await upsertMusicNote({
         userId: user.uid,
-        userName: user.displayName || 'Unknown',
+        userName: getDisplayName({ displayName: user.displayName, email: user.email, phone: user.phoneNumber }),
         userPhoto: user.photoURL || '',
         songName: songName.trim(),
         artist: artist.trim() || 'Unknown Artist',

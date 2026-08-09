@@ -5,6 +5,7 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore';
 import { auth, db } from './firebase';
+import { getDisplayName } from '@/utils/userDisplay';
 
 export interface Group {
   id: string;
@@ -191,7 +192,7 @@ export async function sendGroupMessage(
   const msgData: Record<string, unknown> = {
     groupId,
     senderId: user.uid,
-    senderName: user.displayName || 'Unknown',
+    senderName: getDisplayName({ displayName: user.displayName, email: user.email, phone: user.phoneNumber }),
     text,
     createdAt: Date.now(),
     read: false,

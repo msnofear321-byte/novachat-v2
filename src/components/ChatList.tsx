@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
 import { subscribeToConversations, subscribeToUserPresence, subscribeToTypingStatus } from '@/services/firestore';
 import { isOnlineNow, presenceMillis, PRESENCE_TICK_MS } from '@/services/presence';
+import { getDisplayName } from '@/utils/userDisplay';
 import { useAuth } from '@/context/AuthContext';
 import ChatItem from '@/components/ChatItem';
 import ChatItemActions from '@/components/ChatItemActions';
@@ -120,7 +121,7 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
           }
           const otherId = c.participants.find((p) => p !== currentUser?.uid);
           const u = otherId ? userMap[otherId] : undefined;
-          return u?.displayName.toLowerCase().includes(searchQuery.toLowerCase()) || c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase());
+          return (u ? getDisplayName(u).toLowerCase().includes(searchQuery.toLowerCase()) : false) || c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase());
         })
       : convs;
 

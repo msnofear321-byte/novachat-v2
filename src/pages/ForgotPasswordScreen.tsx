@@ -1,19 +1,33 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlineEnvelope } from 'react-icons/hi2';
 import { resetPassword } from '@/services/auth';
+
+function validateEmail(email: string): string {
+  if (!email.trim()) return 'Email is required';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return 'Please enter a valid email';
+  return '';
+}
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldError, setFieldError] = useState('');
   const [sent, setSent] = useState(false);
   const navigate = useNavigate();
 
   async function handleReset(e: FormEvent) {
     e.preventDefault();
+    const emailErr = validateEmail(email);
+    if (emailErr) {
+      setFieldError(emailErr);
+      setError('');
+      return;
+    }
     setError('');
+    setFieldError('');
     setLoading(true);
     try {
       await resetPassword(email);
@@ -23,6 +37,12 @@ export default function ForgotPasswordScreen() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleEmailChange(value: string) {
+    setEmail(value);
+    if (fieldError) setFieldError('');
+    if (error) setError('');
   }
 
   return (
@@ -90,11 +110,25 @@ export default function ForgotPasswordScreen() {
                   <div className="relative group">
                     <HiOutlineEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[var(--text-muted)] group-focus-within:text-[var(--accent-primary)] transition-colors" />
                     <input
-                      type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                      placeholder="name@example.com" required
-                      className="w-full pl-11 pr-4 py-3.5 bg-[var(--bg-input)] border border-[var(--border-primary)] rounded-[12px] text-[var(--text-primary)] text-[15px] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-glow-strong)] focus:border-[var(--border-accent)] transition-all duration-200"
+                      type="email" value={email} onChange={(e) => handleEmailChange(e.target.value)}
+                      placeholder="name@example.com" required autoComplete="email"
+                      className={`w-full pl-11 pr-4 py-3.5 bg-[var(--bg-input)] border rounded-[12px] text-[var(--text-primary)] text-[15px] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-glow-strong)] focus:border-[var(--border-accent)] transition-all duration-200 ${
+                        fieldError ? 'border-[var(--danger)]' : 'border-[var(--border-primary)]'
+                      }`}
                     />
                   </div>
+                  <AnimatePresence>
+                    {fieldError && (
+                      <motion.p
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="text-[var(--danger)] text-[12px] mt-1.5 ml-1"
+                      >
+                        {fieldError}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
                 </motion.div>
 
                 {error && (

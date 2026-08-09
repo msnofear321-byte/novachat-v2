@@ -17,6 +17,7 @@ import WallpaperPicker from '@/components/WallpaperPicker';
 import UserAvatar from '@/components/UserAvatar';
 import { updateUserProfile } from '@/services/firestore';
 import { uploadToCloudinary } from '@/services/cloudinary';
+import { getDisplayName } from '@/utils/userDisplay';
 import { logout } from '@/services/auth';
 import { useState, useRef, useEffect } from 'react';
 
@@ -292,7 +293,7 @@ export default function SettingsPage() {
                 className="premium-card premium-card-hover p-5 mb-6"
               >
                 <div className="flex items-center gap-4">
-                  <UserAvatar photoURL={user?.photoURL ?? undefined} displayName={user?.displayName || '?'} size="lg" />
+                  <UserAvatar photoURL={user?.photoURL ?? undefined} displayName={getDisplayName({ displayName: user?.displayName, email: user?.email, phone: user?.phoneNumber }) || '?'} size="lg" />
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-[var(--text-primary)] text-[17px] truncate">{userProfile?.displayName || user?.displayName || 'User'}</p>
                     <p className="text-[var(--text-secondary)] text-[14px] truncate">{user?.email}</p>
@@ -372,7 +373,7 @@ export default function SettingsPage() {
                 {/* Photo */}
                 <div className="flex items-center justify-center mb-6">
                   <div className="relative group">
-                    <UserAvatar photoURL={user?.photoURL ?? undefined} displayName={user?.displayName || '?'} size="lg" />
+                    <UserAvatar photoURL={user?.photoURL ?? undefined} displayName={getDisplayName({ displayName: user?.displayName, email: user?.email, phone: user?.phoneNumber }) || '?'} size="lg" />
                     <button onClick={() => fileRef.current?.click()} disabled={uploading}
                       className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       {uploading ? (

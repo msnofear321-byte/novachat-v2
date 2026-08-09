@@ -17,6 +17,7 @@ import MessageSkeleton from '@/components/MessageSkeleton';
 import GroupInfoPanel from '@/components/GroupInfoPanel';
 import { formatDateSeparator } from '@/utils/format';
 import { formatTimestamp } from '@/utils/format';
+import { getDisplayName } from '@/utils/userDisplay';
 import VoiceMessage from '@/components/VoiceMessage';
 import { HiStar } from 'react-icons/hi';
 
@@ -217,7 +218,7 @@ export default function GroupChatPage({ groupId, onBack }: GroupChatPageProps) {
       <div className="relative px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 border-b border-[var(--border-primary)] bg-[var(--bg-card)]/80 backdrop-blur-xl flex items-center gap-1.5 sm:gap-2 md:gap-3">
         {onBack && (
           <motion.button whileTap={{ scale: 0.9 }} onClick={onBack} aria-label="Back"
-            className="w-11 h-11 rounded-[12px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] transition-all md:hidden flex-shrink-0">
+            className="w-11 h-11 rounded-[12px] flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)] transition-all flex-shrink-0">
             <HiOutlineArrowLeft className="w-[20px] h-[20px]" />
           </motion.button>
         )}
@@ -289,7 +290,7 @@ export default function GroupChatPage({ groupId, onBack }: GroupChatPageProps) {
               const showDateSep = !prev || curDate !== prevDate;
 
               const senderInfo = userMap[msg.senderId];
-              const senderName = msg.senderName || senderInfo?.displayName || 'Unknown';
+              const senderName = msg.senderName || getDisplayName(senderInfo) || 'Member';
               const isAdmin = group?.admins?.includes(msg.senderId);
 
               if (msg.deleted) {

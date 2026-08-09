@@ -139,7 +139,7 @@ export default function StatusViewer({ stories, initialIndex = 0, onClose }: Sta
 
   async function handleReply() {
     if (!replyText.trim() || !story) return;
-    await replyToStory(story.id, story.userId, replyText.trim());
+    await replyToStory(story.userId, replyText.trim());
     setReplyText('');
     setShowReply(false);
   }
@@ -309,7 +309,7 @@ export default function StatusViewer({ stories, initialIndex = 0, onClose }: Sta
         ) : (
           <button onClick={() => setShowReply(true)}
             className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white/60 text-[14px] text-left">
-            Reply...
+            Reply to status
           </button>
         )}
       </div>
