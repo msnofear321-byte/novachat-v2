@@ -283,10 +283,10 @@ export default function AuthPage() {
   const linkClass = 'text-[var(--accent-primary)] hover:text-[var(--accent-secondary)] transition-colors font-semibold';
 
   return (
-    <div className="min-h-[100dvh] w-full flex relative overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
+    <div className="h-[100dvh] w-full flex relative overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
       {/* Brand doodle-style watermark */}
       <div
-        className="absolute inset-0 pointer-events-none opacity-[0.5]"
+        className="absolute inset-0 pointer-events-none opacity-[0.35]"
         style={{
           backgroundImage:
             'radial-gradient(var(--border-accent) 1px, transparent 1.5px), radial-gradient(var(--border-accent) 1px, transparent 1.5px)',
@@ -295,91 +295,117 @@ export default function AuthPage() {
         }}
       />
 
+      {/* Aurora orbs (whole page, subtle) */}
+      <motion.div
+        aria-hidden
+        className="absolute top-[-18%] left-[-22%] w-[70vmax] h-[70vmax] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, var(--accent-primary) 0%, transparent 65%)', filter: 'blur(80px)' }}
+        animate={{ opacity: [0.1, 0.2, 0.1] }}
+        transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <motion.div
+        aria-hidden
+        className="absolute bottom-[-28%] right-[-18%] w-[60vmax] h-[60vmax] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, #22D3EE 0%, transparent 65%)', filter: 'blur(90px)' }}
+        animate={{ opacity: [0.06, 0.13, 0.06] }}
+        transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut' }}
+      />
+
       <div className="relative z-10 w-full h-full flex flex-col lg:flex-row">
-        {/* Left panel (desktop) */}
-        <div className="hidden lg:flex lg:w-[50%] xl:w-[55%] flex-col items-center justify-center p-12 relative overflow-hidden bg-gradient-to-br from-[var(--accent-primary)] via-[var(--accent-secondary)] to-[var(--accent-gradient-end)]">
-          <div
-            className="absolute inset-0 opacity-[0.12]"
-            style={{
-              backgroundImage:
-                'radial-gradient(#FFFFFF 1.5px, transparent 2px), radial-gradient(#FFFFFF 1.5px, transparent 2px)',
-              backgroundSize: '36px 36px, 36px 36px',
-              backgroundPosition: '0 0, 18px 18px',
-            }}
+        {/* Left branding panel (desktop) */}
+        <div className="hidden lg:flex lg:w-[48%] xl:w-[52%] flex-col relative overflow-hidden border-r border-[var(--border-primary)]">
+          <motion.div
+            aria-hidden
+            className="absolute -top-1/4 -left-1/4 w-[70%] aspect-square rounded-full pointer-events-none"
+            style={{ background: 'radial-gradient(circle, var(--accent-primary) 0%, transparent 70%)', filter: 'blur(60px)' }}
+            animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.5, 0.3] }}
+            transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
           />
-          <div className="relative z-10 flex flex-col items-center max-w-[440px] text-center">
-            <motion.div
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              className="mb-10"
-            >
-              <div
-                className="w-[132px] h-[132px] rounded-[34px] flex items-center justify-center shadow-[var(--accent-shadow-lg)] border border-white/15 bg-white/10 backdrop-blur-sm"
+          <motion.div
+            aria-hidden
+            className="absolute -bottom-1/4 -right-1/4 w-[60%] aspect-square rounded-full pointer-events-none"
+            style={{ background: 'radial-gradient(circle, #22D3EE 0%, transparent 70%)', filter: 'blur(60px)' }}
+            animate={{ scale: [1.1, 1, 1.1], opacity: [0.14, 0.24, 0.14] }}
+            transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+          />
+
+          <div className="relative z-10 flex flex-col flex-1 px-10 xl:px-14 py-10">
+            <div className="flex items-center gap-3">
+              <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
+                <NovaTile size={46} />
+              </motion.div>
+              <motion.h1
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2, duration: 0.5 }}
+                className="text-[22px] font-bold text-white tracking-tight"
               >
-                <NovaLogo size={84} />
-              </div>
-            </motion.div>
+                Nova<span className="text-[var(--accent-secondary)]">Chat</span>
+              </motion.h1>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.7 }}
-            >
-              <h1 className="text-[46px] font-bold text-white tracking-tight leading-tight mb-4">NovaChat</h1>
-              <p className="text-[17px] text-white/85 font-medium leading-relaxed max-w-[300px]">
-                Simple. Reliable. Secure. End-to-end encrypted messaging with crystal-clear voice and video calls.
-              </p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.7 }}
-              className="flex flex-wrap gap-3 mt-10 justify-center"
-            >
-              {['End-to-End Encrypted', 'Voice & Video Calls', 'Status & Stories'].map((feature, i) => (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="relative w-[min(42vmin,380px)] aspect-square">
+                <div className="absolute inset-0 rounded-full border border-white/10" />
+                <div className="absolute inset-[18%] rounded-full border border-white/10" />
+                {[
+                  { text: 'Hey! 👋', left: '6%', top: '18%', delay: 0.5 },
+                  { text: 'NovaChat is 🔒', left: '56%', top: '8%', delay: 1.4 },
+                  { text: 'Call me? 📞', left: '8%', top: '66%', delay: 2.2 },
+                  { text: 'love the new UI 💜', left: '48%', top: '72%', delay: 3 },
+                ].map((b) => (
+                  <motion.div
+                    key={b.text}
+                    initial={{ opacity: 0, scale: 0.7 }}
+                    animate={{ opacity: 1, scale: 1, y: [0, -9, 0] }}
+                    transition={{
+                      opacity: { delay: b.delay, duration: 0.4 },
+                      scale: { delay: b.delay, duration: 0.4 },
+                      y: { duration: 5, repeat: Infinity, ease: 'easeInOut', delay: b.delay },
+                    }}
+                    className="absolute z-10 px-4 py-2.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 text-white/90 text-[13px] shadow-[0_8px_30px_rgba(0,0,0,0.35)]"
+                    style={{ left: b.left, top: b.top }}
+                  >
+                    {b.text}
+                  </motion.div>
+                ))}
                 <motion.div
-                  key={feature}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.6 + i * 0.1 }}
-                  className="px-4 py-2 rounded-full text-[13px] font-medium text-white/90 border border-white/25 bg-white/10 backdrop-blur-sm"
+                  initial={{ scale: 0.4, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.3 }}
+                  className="absolute inset-0 flex items-center justify-center"
                 >
-                  {feature}
+                  <NovaTile size={124} />
                 </motion.div>
-              ))}
+              </div>
+            </div>
+
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45, duration: 0.6 }}>
+              <h2 className="text-[30px] font-bold text-white tracking-tight leading-tight mb-3">Messages that feel like magic.</h2>
+              <p className="text-white/70 text-[15px] leading-relaxed max-w-[400px]">
+                Simple, reliable, and secure messaging for the people in your orbit.
+              </p>
             </motion.div>
           </div>
         </div>
 
-        {/* Right panel (form) */}
-        <div className="w-full lg:w-[50%] xl:w-[45%] flex items-center justify-center p-4 sm:p-8 relative">
-          <div className="w-full max-w-[420px] relative z-10">
-            {/* Mobile logo */}
-            <motion.div
-              initial={{ scale: 0.6, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              className="lg:hidden text-center mb-6 sm:mb-8"
-            >
-              <div className="inline-flex justify-center mb-3 sm:mb-4">
-                <NovaTile size={72} />
-              </div>
-              <h2 className="text-[24px] sm:text-[28px] font-bold tracking-tight text-[var(--text-primary)]">
-                Nova<span className="text-[var(--accent-primary)]">Chat</span>
-              </h2>
-            </motion.div>
-
-            {/* Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 24, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
-              className="glass-strong rounded-[28px] p-6 sm:p-8 relative overflow-hidden"
-            >
-              {/* Top accent line */}
-              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[var(--accent-primary)] via-[var(--accent-secondary)] to-[var(--accent-gradient-end)]" />
+        {/* Right form panel */}
+        <div className="w-full lg:w-[52%] xl:w-[48%] h-full min-h-0 overflow-y-auto">
+          <div className="min-h-full flex flex-col items-center justify-start lg:justify-center px-5 sm:px-8 py-6 sm:py-10 pb-[calc(env(safe-area-inset-bottom)+32px)]">
+            <div className="w-full max-w-[420px] flex flex-col">
+              {/* Mobile logo + brand */}
+              <motion.div
+                initial={{ scale: 0.6, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                className="lg:hidden flex flex-col items-center mb-8 sm:mb-10"
+              >
+                <NovaTile size={64} />
+                <h2 className="mt-3 text-[22px] font-bold tracking-tight text-[var(--text-primary)]">
+                  Nova<span className="text-[var(--accent-primary)]">Chat</span>
+                </h2>
+              </motion.div>
 
               {/* Toast */}
               <AnimatePresence>
@@ -415,7 +441,7 @@ export default function AuthPage() {
                   >
                     {/* Header */}
                     <div className="mb-2">
-                      <h2 className="text-[26px] font-bold tracking-tight text-[var(--accent-primary)]">
+                      <h2 className="text-[26px] font-bold tracking-tight text-[var(--text-primary)]">
                         <TypingText text="Welcome back" delay={200} />
                       </h2>
                       <motion.p
@@ -424,7 +450,7 @@ export default function AuthPage() {
                         transition={{ delay: 0.8, duration: 0.5 }}
                         className="text-[var(--text-secondary)] text-[14px] mt-1"
                       >
-                        Sign in to continue to NovaChat
+                        Connect with your people.
                       </motion.p>
                     </div>
 
@@ -585,7 +611,7 @@ export default function AuthPage() {
                   >
                     {/* Header */}
                     <div className="mb-2">
-                      <h2 className="text-[26px] font-bold tracking-tight text-[var(--accent-primary)]">
+                      <h2 className="text-[26px] font-bold tracking-tight text-[var(--text-primary)]">
                         <TypingText text="Create account" delay={100} />
                       </h2>
                       <motion.p
@@ -766,16 +792,15 @@ export default function AuthPage() {
                   </motion.form>
                 )}
               </AnimatePresence>
-            </motion.div>
-
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.8 }}
-              className="text-center text-[var(--text-secondary)] text-[12px] mt-6 font-medium"
-            >
-              Protected by end-to-end encryption
-            </motion.p>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.8 }}
+                className="text-center text-[var(--text-secondary)] text-[12px] mt-8 font-medium"
+              >
+                Protected by end-to-end encryption
+              </motion.p>
+            </div>
           </div>
         </div>
       </div>

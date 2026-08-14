@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect, memo, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
-import { motion } from 'framer-motion';
-import { HiOutlineStar, HiOutlineArrowUturnRight, HiOutlinePencilSquare, HiOutlineTrash, HiOutlineChatBubbleLeftRight, HiOutlineDocumentDuplicate, HiOutlineFaceSmile, HiOutlineMapPin } from 'react-icons/hi2';
+import { motion, AnimatePresence } from 'framer-motion';
+import { HiOutlineStar, HiOutlineArrowUturnRight, HiOutlinePencilSquare, HiOutlineTrash, HiOutlineChatBubbleLeftRight, HiOutlineDocumentDuplicate, HiOutlineMapPin } from 'react-icons/hi2';
 import { HiStar } from 'react-icons/hi';
 import { useAuth } from '@/context/AuthContext';
 import { formatTimestamp } from '@/utils/format';
 import VoiceMessage from '@/components/VoiceMessage';
 import type { Message } from '@/types';
 
-export const MESSAGE_REACTIONS = ['❤️', '😂', '👍', '😮', '😢', '🔥', '👏'] as const;
+export const MESSAGE_REACTIONS = ['❤️', '😂', '😮', '😢', '👍', '🔥'] as const;
 
 interface MessageBubbleProps {
   message: Message;
@@ -55,20 +55,18 @@ function MessageBubble({
   onReply, onForward, onStar, onDelete, onDeleteForEveryone, onEdit, onCopy, onScrollToMessage, onReact, onPin, highlight,
 }: MessageBubbleProps) {
   const { user } = useAuth();
-  const [showActions, setShowActions] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(message.text);
-  const [showDeleteOptions, setShowDeleteOptions] = useState(false);
-  const [showReactions, setShowReactions] = useState(false);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [menuMode, setMenuMode] = useState<'main' | 'delete'>('main');
   const editInputRef = useRef<HTMLInputElement>(null);
-  const actionsRef = useRef<HTMLDivElement>(null);
-  const deleteRef = useRef<HTMLDivElement>(null);
-  const reactionsRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const pressTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const pressOriginRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const pressActiveRef = useRef(false);
+  // Suppresses the click that fires right after a touch long-press (which
+  // would otherwise land on the newly mounted overlay and instantly close it).
+  const suppressClickRef = useRef(false);
 
   useEffect(() => {
     if (editing && editInputRef.current) editInputRef.current.focus();
@@ -79,15 +77,6 @@ function MessageBubble({
       if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
     };
   }, []);
-
-  useEffect(() => {
-    if (!showReactions) return;
-    function handleClick(e: MouseEvent) {
-      if (reactionsRef.current && !reactionsRef.current.contains(e.target as Node)) setShowReactions(false);
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [showReactions]);
 
   useEffect(() => {
     if (!menu) return;
@@ -106,22 +95,18 @@ function MessageBubble({
   }, [menu]);
 
   useEffect(() => {
-    if (!showActions) return;
-    function handleClick(e: MouseEvent) {
-      if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) setShowActions(false);
+    if (!menu) return;
+    if (typeof window === 'undefined' || !window.history.pushState) return;
+    window.history.pushState({ __nova_menu: true }, '');
+    function onPopState(e: PopStateEvent) {
+      if (e.state && e.state.__nova_menu) setMenu(null);
     }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [showActions]);
-
-  useEffect(() => {
-    if (!showDeleteOptions) return;
-    function handleClick(e: MouseEvent) {
-      if (deleteRef.current && !deleteRef.current.contains(e.target as Node)) setShowDeleteOptions(false);
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [showDeleteOptions]);
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+      if (window.history.state?.__nova_menu) window.history.back();
+    };
+  }, [menu]);
 
   const canEdit = isOwn && message.type === 'text' && !message.deleted && !message.deletedForEveryone && message.createdAt && (Date.now() - message.createdAt < 15 * 60 * 1000);
   const canDeleteForEveryone = isOwn && !message.deleted && !message.deletedForEveryone && message.createdAt && (Date.now() - message.createdAt < 15 * 60 * 1000);
@@ -144,27 +129,25 @@ function MessageBubble({
     } else if (navigator.clipboard && message.text) {
       navigator.clipboard.writeText(message.text).catch(() => {});
     }
-    setShowActions(false);
   }
 
-  function handleDeleteClick() {
-    if (canDeleteForEveryone) {
-      setShowDeleteOptions(true);
-    } else {
-      onDelete(message);
-    }
-    setShowActions(false);
-  }
+  const closeMenu = () => {
+    setMenu(null);
+    setMenuMode('main');
+  };
 
   const openContextMenu = (x: number, y: number) => {
-    setShowActions(false);
-    setShowDeleteOptions(false);
-    setShowReactions(false);
+    if (isCoarse) {
+      setMenuMode('main');
+      setMenu({ x: 0, y: 0 });
+      return;
+    }
     const pad = 12;
-    const menuW = 200;
-    const menuH = 360;
+    const menuW = 220;
+    const menuH = 400;
     const clampedX = Math.max(pad, Math.min(x, window.innerWidth - menuW - pad));
     const clampedY = Math.max(pad, Math.min(y, window.innerHeight - menuH - pad));
+    setMenuMode('main');
     setMenu({ x: clampedX, y: clampedY });
   };
 
@@ -178,14 +161,13 @@ function MessageBubble({
   function handlePressStart(e: ReactPointerEvent) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     if (e.pointerType !== 'touch') return;
-    const target = e.target as HTMLElement;
-    if (actionsRef.current?.contains(target) || deleteRef.current?.contains(target)) return;
     pressActiveRef.current = true;
     pressOriginRef.current = { x: e.clientX, y: e.clientY };
     cancelLongPress();
     pressTimerRef.current = setTimeout(() => {
       if (!pressActiveRef.current) return;
       pressActiveRef.current = false;
+      suppressClickRef.current = true;
       openContextMenu(pressOriginRef.current.x, pressOriginRef.current.y);
     }, 500);
   }
@@ -322,7 +304,73 @@ function MessageBubble({
     return null;
   }
 
-  const isTouchDevice = typeof window !== 'undefined' && 'ontouchstart' in window;
+  const isCoarse = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+
+  const reactionRow = (
+    <div className="flex items-center justify-between gap-0.5 px-3 py-2">
+      {MESSAGE_REACTIONS.map((emoji) => {
+        const mine = message.reactions?.[emoji]?.includes(user?.uid || '');
+        return (
+          <button
+            key={emoji}
+            onClick={() => { onReact(message, emoji); closeMenu(); }}
+            className={`w-9 h-9 rounded-full flex items-center justify-center text-[19px] transition-all active:scale-90 ${
+              mine ? 'bg-[var(--accent-primary)]/20' : 'hover:bg-[var(--hover-bg)]'
+            }`}
+            title={`React ${emoji}`}
+          >
+            {emoji}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const actionList = (
+    <div>
+      {[
+        { icon: HiOutlineChatBubbleLeftRight, label: 'Reply', action: () => { onReply(message); closeMenu(); } },
+        { icon: HiOutlineDocumentDuplicate, label: 'Copy', action: () => { handleCopy(); closeMenu(); } },
+        { icon: HiOutlineArrowUturnRight, label: 'Forward', action: () => { onForward(message); closeMenu(); } },
+        { icon: message.starred ? HiStar : HiOutlineStar, label: message.starred ? 'Unstar' : 'Star', filled: message.starred, action: () => { onStar(message); closeMenu(); } },
+        { icon: HiOutlineMapPin, label: message.pinned ? 'Unpin' : 'Pin', filled: !!message.pinned, action: () => { onPin?.(message); closeMenu(); } },
+        ...(canEdit ? [{ icon: HiOutlinePencilSquare, label: 'Edit', action: () => { setEditing(true); closeMenu(); } }] : []),
+        ...(isOwn || canDeleteForEveryone ? [{ icon: HiOutlineTrash, label: 'Delete', danger: true, action: () => setMenuMode('delete') }] : []),
+      ].map(({ icon: Icon, label, action, danger, filled }) => (
+        <button key={label} onClick={(e) => { e.stopPropagation(); action(); }}
+          className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-all ${
+            danger
+              ? 'text-[var(--danger)] hover:bg-[var(--danger-bg)]'
+              : 'text-[var(--text-primary)] hover:bg-[var(--hover-bg)]'
+          }`}>
+          <Icon className={`w-4 h-4 flex-shrink-0 ${filled ? 'text-[var(--accent-star)]' : danger ? 'text-[var(--danger)]' : 'text-[var(--text-muted)]'}`} />
+          <span className="text-[13px] font-medium">{label}</span>
+        </button>
+      ))}
+    </div>
+  );
+
+  const deleteMenu = (
+    <div className="py-1">
+      <p className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">Delete message?</p>
+      <button onClick={() => { onDelete(message); closeMenu(); }}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left transition-all hover:bg-[var(--hover-bg)]">
+        <HiOutlineTrash className="w-4 h-4 text-[var(--text-secondary)]" />
+        <span className="text-[13px] text-[var(--text-primary)]">Delete for me</span>
+      </button>
+      {canDeleteForEveryone && (
+        <button onClick={() => { onDeleteForEveryone?.(message); closeMenu(); }}
+          className="w-full flex items-center gap-3 px-4 py-3 text-left transition-all hover:bg-[var(--danger-bg)]">
+          <HiOutlineTrash className="w-4 h-4 text-[var(--danger)]" />
+          <span className="text-[13px] text-[var(--danger)]">Delete for everyone</span>
+        </button>
+      )}
+      <button onClick={() => setMenuMode('main')}
+        className="w-full flex items-center justify-center px-4 py-3 text-[13px] font-medium text-[var(--text-muted)] hover:bg-[var(--hover-bg)] transition-all border-t border-[var(--border-primary)]">
+        Cancel
+      </button>
+    </div>
+  );
 
   return (
     <motion.div
@@ -337,6 +385,15 @@ function MessageBubble({
       onPointerCancel={handlePressEnd}
       onPointerLeave={handlePressEnd}
       onContextMenu={handleContextMenu}
+      onClickCapture={(e) => {
+        // Swallow the single click that follows a touch long-press so the
+        // freshly opened menu isn't closed immediately by the release.
+        if (suppressClickRef.current) {
+          suppressClickRef.current = false;
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
     >
       <div className={`relative max-w-[82%] sm:max-w-[80%] md:max-w-[75%] min-w-0 ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}>
         {showSender && !isOwn && (
@@ -360,6 +417,8 @@ function MessageBubble({
         )}
 
         <div className={`relative overflow-hidden ${isOwn ? 'rounded-[16px] rounded-br-[4px]' : 'rounded-[16px] rounded-bl-[4px]'} ${
+          menu ? 'ring-2 ring-[var(--accent-primary)]/60 shadow-[var(--accent-glow-strong)]' : ''
+        } ${
           isOwn
             ? 'bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-gradient-end)] text-white shadow-[0_1px_8px_var(--accent-glow)]'
             : 'bg-[var(--bg-message-other)] border border-[var(--border-primary)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.06)]'
@@ -420,24 +479,8 @@ function MessageBubble({
         </div>
 
         {/* Reactions row */}
-        {onReact && (
-          <div ref={reactionsRef} className={`mt-1 flex items-center gap-1 flex-wrap ${isOwn ? 'justify-end' : 'justify-start'}`}>
-            {showReactions && (
-              <div className="flex items-center gap-0.5 glass-premium rounded-full p-0.5 shadow-[var(--shadow-lg)]">
-                {MESSAGE_REACTIONS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => { onReact(message, emoji); setShowReactions(false); }}
-                    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[15px] sm:text-[17px] transition-all active:scale-90 ${
-                      message.reactions?.[emoji]?.includes(user?.uid || '') ? 'bg-[var(--accent-primary)]/20' : 'hover:bg-[var(--hover-bg)]'
-                    }`}
-                    title={`React ${emoji}`}
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            )}
+        {onReact && Object.keys(message.reactions || {}).some((e) => (message.reactions![e] || []).length > 0) && (
+          <div className={`mt-1 flex items-center gap-1 flex-wrap ${isOwn ? 'justify-end' : 'justify-start'}`}>
             {Object.entries(message.reactions || {})
               .filter(([, uids]) => uids.length > 0)
               .map(([emoji, uids]) => {
@@ -458,89 +501,71 @@ function MessageBubble({
                   </button>
                 );
               })}
-            <button
-              onClick={() => setShowReactions((v) => !v)}
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--accent-primary)] hover:bg-[var(--hover-bg)] transition-all active:scale-90"
-              title="Add reaction"
-              aria-label="Add reaction"
-            >
-              <HiOutlineFaceSmile className="w-4 h-4" />
-            </button>
           </div>
         )}
-
-        {/* Delete options popover */}
-        {showDeleteOptions && (
-          <div ref={deleteRef} className="absolute top-full mt-1 left-0 right-0 z-30 glass-premium rounded-[12px] sm:rounded-[14px] shadow-[var(--shadow-xl)] overflow-hidden">
-            <button onClick={() => { onDelete(message); setShowDeleteOptions(false); }}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--hover-bg)] transition-all text-left">
-              <HiOutlineTrash className="w-4 h-4 text-[var(--text-secondary)]" />
-              <span className="text-[13px] text-[var(--text-primary)]">Delete for me</span>
-            </button>
-            {canDeleteForEveryone && (
-              <button onClick={() => { onDeleteForEveryone?.(message); setShowDeleteOptions(false); }}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--danger-bg)] transition-all text-left border-t border-[var(--border-primary)]">
-                <HiOutlineTrash className="w-4 h-4 text-[var(--danger)]" />
-                <span className="text-[13px] text-[var(--danger)]">Delete for everyone</span>
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Action buttons */}
-        <div ref={actionsRef} className={`${isTouchDevice ? 'message-actions' : 'absolute top-1/2 -translate-y-1/2 ' + (isOwn ? '-left-2 -translate-x-full' : '-right-2 translate-x-0') + ' opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-20'}`}>
-          <div className="flex items-center gap-0.5 glass-premium rounded-[10px] sm:rounded-[12px] p-0.5 shadow-[var(--shadow-lg)]">
-            {[
-              { icon: HiOutlineStar, title: 'Star', action: () => onStar(message), filled: message.starred },
-              { icon: HiOutlineChatBubbleLeftRight, title: 'Reply', action: () => onReply(message) },
-              { icon: HiOutlineArrowUturnRight, title: 'Forward', action: () => onForward(message) },
-              { icon: HiOutlineDocumentDuplicate, title: 'Copy', action: handleCopy },
-                  ...(canEdit ? [{ icon: HiOutlinePencilSquare, title: 'Edit', action: () => setEditing(true) }] : []),
-              ...(isOwn ? [{ icon: HiOutlineTrash, title: 'Delete', action: handleDeleteClick }] : []),
-            ].map(({ icon: Icon, title, action, filled }) => (
-              <button key={title} onClick={(e) => { e.stopPropagation(); action(); }}
-                className={`w-7 h-7 rounded-[8px] flex items-center justify-center transition-all ${
-                  title === 'Delete' ? 'text-[var(--text-muted)] hover:bg-[var(--danger-bg)] hover:text-[var(--danger)]'
-                  : title === 'Translate' ? 'text-[var(--text-muted)] hover:bg-[var(--accent-primary)]/10 hover:text-[var(--accent-primary)]'
-                  : 'text-[var(--text-muted)] hover:bg-[var(--hover-bg)] hover:text-[var(--text-primary)]'
-                } ${filled ? 'text-[var(--accent-star)]' : ''}`}
-                title={title}>
-                <Icon className="w-3.5 h-3.5" />
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Context menu (right-click / long-press) */}
-        {menu && (
-          <div
-            ref={menuRef}
-            style={{ left: menu.x, top: menu.y }}
-            className="fixed z-[70] w-[200px] glass-premium rounded-[14px] shadow-[var(--shadow-xl)] overflow-hidden py-1 animate-spring"
-          >
-            {[
-              { icon: HiOutlineFaceSmile, label: 'React', action: () => { setShowReactions(true); setMenu(null); } },
-              { icon: HiOutlineChatBubbleLeftRight, label: 'Reply', action: () => { onReply(message); setMenu(null); } },
-              { icon: message.starred ? HiStar : HiOutlineStar, label: message.starred ? 'Unstar' : 'Star', filled: message.starred, action: () => { onStar(message); setMenu(null); } },
-              { icon: HiOutlineMapPin, label: message.pinned ? 'Unpin' : 'Pin', filled: !!message.pinned, action: () => { onPin?.(message); setMenu(null); } },
-              { icon: HiOutlineArrowUturnRight, label: 'Forward', action: () => { onForward(message); setMenu(null); } },
-              { icon: HiOutlineDocumentDuplicate, label: 'Copy', action: () => { handleCopy(); setMenu(null); } },
-              ...(canEdit ? [{ icon: HiOutlinePencilSquare, label: 'Edit', action: () => { setEditing(true); setMenu(null); } }] : []),
-              ...(isOwn ? [{ icon: HiOutlineTrash, label: 'Delete', danger: true, action: () => { handleDeleteClick(); setMenu(null); } }] : []),
-              ...(canDeleteForEveryone ? [{ icon: HiOutlineTrash, label: 'Delete for everyone', danger: true, action: () => { onDeleteForEveryone?.(message); setMenu(null); } }] : []),
-            ].map(({ icon: Icon, label, action, danger, filled }) => (
-              <button key={label} onClick={(e) => { e.stopPropagation(); action(); }}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-all ${
-                  danger
-                    ? 'text-[var(--danger)] hover:bg-[var(--danger-bg)]'
-                    : 'text-[var(--text-primary)] hover:bg-[var(--hover-bg)]'
-                }`}>
-                <Icon className={`w-4 h-4 flex-shrink-0 ${filled ? 'text-[var(--accent-star)]' : danger ? 'text-[var(--danger)]' : 'text-[var(--text-muted)]'}`} />
-                <span className="text-[13px] font-medium">{label}</span>
-              </button>
-            ))}
-          </div>
-        )}
+        <AnimatePresence>
+          {menu && (
+            <>
+              <motion.div
+                key="overlay"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                onClick={closeMenu}
+                className="fixed inset-0 z-[69] bg-black/50 backdrop-blur-[2px]"
+                aria-hidden="true"
+              />
+              {isCoarse ? (
+                <motion.div
+                  key="sheet"
+                  ref={menuRef}
+                  initial={{ y: '100%' }}
+                  animate={{ y: 0 }}
+                  exit={{ y: '100%' }}
+                  transition={{ type: 'spring', stiffness: 320, damping: 34 }}
+                  className="fixed inset-x-0 bottom-0 z-[70] glass-premium rounded-t-[22px] border-t border-[var(--border-primary)] pb-[calc(env(safe-area-inset-bottom)+12px)]"
+                >
+                  <div className="flex justify-center pt-2.5 pb-1">
+                    <div className="w-10 h-1 rounded-full bg-[var(--border-primary)]" />
+                  </div>
+                  {menuMode === 'delete' ? (
+                    deleteMenu
+                  ) : (
+                    <>
+                      {reactionRow}
+                      <div className="mx-3 mt-1 border-t border-[var(--border-primary)]" />
+                      {actionList}
+                    </>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="popover"
+                  ref={menuRef}
+                  style={{ left: menu.x, top: menu.y }}
+                  initial={{ opacity: 0, scale: 0.92 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.92 }}
+                  transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
+                  className="fixed z-[70] w-[220px] glass-premium rounded-[14px] shadow-[var(--shadow-xl)] overflow-hidden py-2"
+                >
+                  {menuMode === 'delete' ? (
+                    deleteMenu
+                  ) : (
+                    <>
+                      {reactionRow}
+                      <div className="mx-3 mt-1 border-t border-[var(--border-primary)]" />
+                      {actionList}
+                    </>
+                  )}
+                </motion.div>
+              )}
+            </>
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   );

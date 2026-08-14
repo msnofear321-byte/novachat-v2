@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
-import { subscribeToConversations, subscribeToUserPresence, subscribeToTypingStatus } from '@/services/firestore';
-import { isOnlineNow, presenceMillis, PRESENCE_TICK_MS } from '@/services/presence';
+import { subscribeToConversations, subscribeToTypingStatus } from '@/services/firestore';
+import { isOnlineNow, PRESENCE_TICK_MS } from '@/services/presence';
 import { getDisplayName } from '@/utils/userDisplay';
+import { getConversationOtherId } from '@/utils/chatNavigation';
 import { useAuth } from '@/context/AuthContext';
+import { useUserProfiles } from '@/hooks/useUserProfiles';
 import ChatItem from '@/components/ChatItem';
 import ChatItemActions from '@/components/ChatItemActions';
-import type { Conversation, User } from '@/types';
+import type { Conversation } from '@/types';
 
 interface ChatListProps {
   searchQuery: string;
@@ -18,16 +20,32 @@ interface ChatListProps {
   onTotalUnreadChange?: (count: number) => void;
 }
 
+/**
+ * Resolve the other participant's UID for a 1:1 conversation. The participants
+ * array is the source of truth (with a `|`-scheme id fallback before the doc
+ * loads). Self-conversations resolve to the current user's own UID; malformed
+ * docs with no participants resolve to undefined (row shows a skeleton).
+ */
+function resolveOtherId(c: Conversation, myUid?: string): string | undefined {
+  if (c.type === 'group') return undefined;
+  const other = getConversationOtherId(c.id, myUid, c);
+  if (other) return other;
+  const parts = c.participants ?? [];
+  if (parts.length === 0) return undefined;
+  const allSelf = myUid ? parts.every((p) => p === myUid) : false;
+  return allSelf ? parts[0] : undefined;
+}
+
 export default function ChatList({ searchQuery, activeConversationId, refreshKey, onSearchOpen: _onSearchOpen, onTotalUnreadChange }: ChatListProps) {
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [userMap, setUserMap] = useState<Record<string, User>>({});
   const [typingMap, setTypingMap] = useState<Record<string, boolean>>({});
   const [now, setNow] = useState(() => Date.now());
   const [menuTarget, setMenuTarget] = useState<Conversation | null>(null);
-  const userSubsRef = useRef<Record<string, () => void>>({});
 
+  // Realtime conversation/message listener: any sent message (even with the
+  // chat closed) updates lastMessage, timestamp, unread and sorting immediately.
   useEffect(() => {
     const unsub = subscribeToConversations((convs) => {
       setConversations(convs);
@@ -47,51 +65,24 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const subs = userSubsRef.current;
-    const watchedIds = new Set<string>();
-
+  // Collect the unique UIDs this list needs profiles for, then resolve each
+  // through the shared ref-counted resolver. Every row resolves its own UID;
+  // profiles stay cached and realtime across remounts and duplicate listeners.
+  const otherIds = useMemo(() => {
+    const ids = new Set<string>();
     conversations.forEach((c) => {
-      const otherId = c.participants.find((p) => p !== currentUser?.uid);
-      if (!otherId) return;
-
-      watchedIds.add(otherId);
-      if (!subs[otherId]) {
-        subs[otherId] = subscribeToUserPresence(otherId, (u) => {
-          if (!u) return;
-          setUserMap((prev) => {
-            const prevUser = prev[u.uid];
-            const changed =
-              !prevUser ||
-              prevUser.online !== u.online ||
-              presenceMillis(prevUser.lastSeen) !== presenceMillis(u.lastSeen) ||
-              presenceMillis(prevUser.lastActive) !== presenceMillis(u.lastActive);
-            if (!changed) return prev;
-            return { ...prev, [u.uid]: u };
-          });
-        });
-      }
+      const other = resolveOtherId(c, currentUser?.uid);
+      if (other) ids.add(other);
     });
-
-    Object.keys(subs).forEach((id) => {
-      if (!watchedIds.has(id)) {
-        subs[id]();
-        delete subs[id];
-      }
-    });
+    return [...ids];
   }, [conversations, currentUser?.uid]);
 
-  useEffect(() => {
-    return () => {
-      Object.values(userSubsRef.current).forEach((u) => u());
-      userSubsRef.current = {};
-    };
-  }, []);
+  const userMap = useUserProfiles(otherIds);
 
   useEffect(() => {
     if (!currentUser) return;
     const unsubs = conversations.map((c) => {
-      const otherId = c.participants.find((p) => p !== currentUser.uid);
+      const otherId = resolveOtherId(c, currentUser.uid);
       if (!otherId) return () => {};
       return subscribeToTypingStatus(otherId, c.id, (active) => {
         setTypingMap((prev) => ({ ...prev, [c.id]: active }));
@@ -119,7 +110,7 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
             return (c.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
               c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase());
           }
-          const otherId = c.participants.find((p) => p !== currentUser?.uid);
+          const otherId = resolveOtherId(c, currentUser?.uid);
           const u = otherId ? userMap[otherId] : undefined;
           return (u ? getDisplayName(u).toLowerCase().includes(searchQuery.toLowerCase()) : false) || c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase());
         })
@@ -130,7 +121,7 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
 
   const renderItem = (c: Conversation) => {
     const isGroup = c.type === 'group';
-    const otherId = isGroup ? undefined : c.participants.find((p) => p !== currentUser?.uid);
+    const otherId = isGroup ? undefined : resolveOtherId(c, currentUser?.uid);
     const otherUser = otherId ? userMap[otherId] : undefined;
     return (
       <ChatItem
@@ -192,7 +183,7 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
         <ChatItemActions
           conversation={menuTarget}
           otherUser={(() => {
-            const oid = menuTarget.type === 'group' ? undefined : menuTarget.participants.find((p) => p !== currentUser?.uid);
+            const oid = menuTarget.type === 'group' ? undefined : resolveOtherId(menuTarget, currentUser?.uid);
             return oid ? userMap[oid] : undefined;
           })()}
           isOpen={!!menuTarget}

@@ -111,7 +111,13 @@ function MessageInput({ onSend, onFileSelect, onTyping, onVoiceRecorded, uploadP
   return (
     <div className="relative">
       <AnimatePresence>
-        {showEmoji && <EmojiPicker onSelect={handleEmojiSelect} onClose={() => setShowEmoji(false)} />}
+        {showEmoji && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[15]" onClick={() => setShowEmoji(false)} />
+            <EmojiPicker onSelect={handleEmojiSelect} onClose={() => setShowEmoji(false)} />
+          </>
+        )}
       </AnimatePresence>
 
       <div className="sticky bottom-0 z-20 px-2.5 sm:px-4 py-2.5 sm:py-3 border-t border-[var(--border-primary)] bg-[var(--bg-card)]/90 backdrop-blur-xl safe-input-area safe-area-bottom">
@@ -128,7 +134,7 @@ function MessageInput({ onSend, onFileSelect, onTyping, onVoiceRecorded, uploadP
         <div className="flex items-end gap-1.5 sm:gap-2">
           {!hideMediaControls && (
             <div className="relative flex-shrink-0">
-              <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowAttach(!showAttach)}
+              <motion.button whileTap={{ scale: 0.9 }} onClick={() => { setShowEmoji(false); setShowAttach(!showAttach); }}
                 className={`${iconBtn} ${showAttach ? '!text-[var(--accent-primary)] !bg-[var(--accent-primary)]/10' : ''}`}>
                 <HiOutlinePlusCircle className="w-[20px] h-[20px] sm:w-[22px] sm:h-[22px]" />
               </motion.button>
@@ -139,7 +145,7 @@ function MessageInput({ onSend, onFileSelect, onTyping, onVoiceRecorded, uploadP
                       className="fixed inset-0 z-10" onClick={() => setShowAttach(false)} />
                     <motion.div initial={{ opacity: 0, scale: 0.9, y: 8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 8 }}
                       transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
-                      className="absolute bottom-14 left-0 glass-premium rounded-[16px] p-1.5 shadow-[var(--shadow-xl)] z-20 w-[164px]">
+                      className="absolute bottom-14 left-0 glass-premium rounded-[16px] p-1.5 shadow-[var(--shadow-xl)] z-20 w-[172px]">
                       {[
                         { label: 'Image', icon: '🖼️', accept: 'image/*' },
                         { label: 'Video', icon: '🎬', accept: 'video/*' },
@@ -151,6 +157,15 @@ function MessageInput({ onSend, onFileSelect, onTyping, onVoiceRecorded, uploadP
                           <span className="text-[16px]">{icon}</span> {label}
                         </button>
                       ))}
+                      <div className="my-1 border-t border-[var(--border-primary)]" />
+                      <button onClick={() => { setShowAttach(false); cameraRef.current?.click(); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[10px] text-[var(--text-primary)] text-[13px] font-medium hover:bg-[var(--hover-bg)] transition-all">
+                        <HiOutlineCamera className="w-[16px] h-[16px]" /> Camera
+                      </button>
+                      <button onClick={() => { setShowAttach(false); setShowEmoji(true); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[10px] text-[var(--text-primary)] text-[13px] font-medium hover:bg-[var(--hover-bg)] transition-all">
+                        <BsEmojiSmile className="w-[16px] h-[16px]" /> Emoji
+                      </button>
                     </motion.div>
                   </>
                 )}
@@ -159,20 +174,7 @@ function MessageInput({ onSend, onFileSelect, onTyping, onVoiceRecorded, uploadP
             </div>
           )}
 
-          {!hideMediaControls && (
-            <div className="flex-shrink-0">
-              <motion.button whileTap={{ scale: 0.9 }} onClick={() => cameraRef.current?.click()} aria-label="Take photo"
-                className={iconBtn}>
-                <HiOutlineCamera className="w-[20px] h-[20px] sm:w-[22px] sm:h-[22px]" />
-              </motion.button>
-              <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCameraChange} />
-            </div>
-          )}
-
-          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowEmoji(!showEmoji)}
-            className={`${iconBtn} flex-shrink-0 ${showEmoji ? '!text-[var(--accent-primary)] !bg-[var(--accent-primary)]/10' : ''}`}>
-            <BsEmojiSmile className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" />
-          </motion.button>
+          <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCameraChange} />
 
           <div className="flex-1 min-w-0 relative">
             <textarea ref={textareaRef} value={text}

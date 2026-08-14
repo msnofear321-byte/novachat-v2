@@ -18,8 +18,6 @@ import {
   pinMessage,
   setTypingStatus,
   subscribeToTypingStatus,
-  subscribeToUserPresence,
-  getUserById,
   blockUser,
   unblockUser,
   subscribeToBlockedStatus,
@@ -27,6 +25,7 @@ import {
 import { doc, onSnapshot, writeBatch } from 'firebase/firestore';
 import { getConversationOtherId } from '@/utils/chatNavigation';
 import { getDisplayName } from '@/utils/userDisplay';
+import { useUserProfiles } from '@/hooks/useUserProfiles';
 import { auth, db } from '@/services/firebase';
 import { uploadToCloudinary, getFileType, getMediaDownloadURL } from '@/services/cloudinary';
 import { showBrowserNotification } from '@/services/notifications';
@@ -78,7 +77,6 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
   const [messages, setMessages] = useState<Message[]>([]);
   const [pendingMessages, setPendingMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [otherUser, setOtherUser] = useState<User | undefined>();
   const [conversation, setConversation] = useState<Conversation | undefined>();
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [forwardMsg, setForwardMsg] = useState<Message | null>(null);
@@ -96,12 +94,18 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
   const deliveredRef = useRef(false);
   const readSyncRef = useRef(false);
   const otherUserRef = useRef<User | undefined>(undefined);
-  otherUserRef.current = otherUser;
 
   const otherId = useMemo(
     () => getConversationOtherId(conversationId, user?.uid, conversation),
     [conversationId, user?.uid, conversation],
   );
+
+  const otherProfileIds = useMemo(() => (otherId ? [otherId] : []), [otherId]);
+  // Shared realtime resolver: same ref-counted listener (and cache) as the
+  // chat list, so the header name always matches the list, resolves instantly
+  // from cache, and stays in sync with profile edits.
+  const otherUser = useUserProfiles(otherProfileIds)[otherId];
+  otherUserRef.current = otherUser;
 
   const otherDisplayName = useMemo(() => getDisplayName(otherUser, 'User'), [otherUser]);
 
@@ -232,13 +236,6 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
       unsub?.();
     };
   }, [conversationId, user]);
-
-  useEffect(() => {
-    if (!otherId) return;
-    const unsub = subscribeToUserPresence(otherId, (u) => setOtherUser(u || undefined));
-    getUserById(otherId).then((u) => { if (u) setOtherUser(u); });
-    return unsub;
-  }, [otherId, conversationId]);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'conversations', conversationId), (snap) => {
@@ -486,7 +483,7 @@ export default function ChatPage({ conversationId, onBack, onSearchOpen: _onSear
       <ChatNoteBanner userId={otherId} />
 
       {/* Header */}
-      <div className="relative px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 border-b border-[var(--border-primary)] bg-[var(--bg-card)]/80 backdrop-blur-xl flex-shrink-0">
+      <div className="relative z-40 px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 border-b border-[var(--border-primary)] bg-[var(--bg-card)]/80 backdrop-blur-xl flex-shrink-0">
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
           {onBack && (
             <motion.button whileTap={{ scale: 0.9 }} onClick={onBack} aria-label="Back"

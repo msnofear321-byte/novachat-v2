@@ -87,8 +87,11 @@ export async function getAllUsers(): Promise<User[]> {
   const usersRef = collection(db, 'users');
   const q = query(usersRef, limit(50));
   const snapshot = await getDocs(q);
+  // The Firebase auth UID is the document id — the only identity key. Derive
+  // it from `d.id` (never trust a `uid` field inside the doc, which legacy
+  // documents may be missing) so tapping a user always opens the right chat.
   return snapshot.docs
-    .map((d) => d.data() as User)
+    .map((d) => ({ uid: d.id, ...d.data() }) as User)
     .filter((u) => u.uid !== auth.currentUser?.uid);
 }
 
@@ -117,7 +120,8 @@ export async function searchUsers(searchTerm: string): Promise<User[]> {
   snapshots.forEach((snap) => {
     if (!snap) return;
     snap.docs.forEach((d) => {
-      const u = d.data() as User;
+      // UID is the document id (canonical identity); don't trust the field.
+      const u = { uid: d.id, ...(d.data() as User) };
       const name = (u.displayName || '').toLowerCase();
       const email = (u.email || '').toLowerCase();
       const uid = (u.uid || '').toLowerCase();
@@ -188,6 +192,7 @@ function setCachedConversations(uid: string, conversations: Conversation[]): voi
 export async function createConversation(otherUserId: string): Promise<string> {
   const currentUser = auth.currentUser;
   if (!currentUser) throw new Error('Not authenticated');
+  if (!otherUserId) throw new Error('Invalid user');
 
   const canonicalId = getConversationId(currentUser.uid, otherUserId);
 

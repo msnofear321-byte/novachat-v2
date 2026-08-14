@@ -1102,23 +1102,6 @@ a,
   }
 }
 
-/* ── Mobile tap highlight ──────────────────────── */
-@media (hover: none) and (pointer: coarse) {
-  .message-actions {
-    display: flex !important;
-    opacity: 1 !important;
-    position: static !important;
-    transform: none !important;
-    margin-top: 4px;
-  }
-  .message-actions > div {
-    background: transparent !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    gap: 2px !important;
-  }
-}
-
 /*  Composer textarea  */
 .composer-textarea {
   overflow-wrap: break-word;

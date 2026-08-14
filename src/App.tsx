@@ -115,8 +115,7 @@ function AppRoutes() {
               transition={pageTransition}
               drag={swipeEnabled ? 'x' : false}
               dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={{ left: 1, right: 1 }}
-              dragSnapToOrigin
+              dragElastic={0.35}
               dragMomentum={false}
               style={{ touchAction: 'pan-y' }}
               onDragEnd={(_, info) => {

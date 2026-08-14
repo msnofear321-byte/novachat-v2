@@ -10,6 +10,14 @@ function validateEmail(email: string): string {
   return '';
 }
 
+function NovaLogo() {
+  return (
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    </svg>
+  );
+}
+
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,11 +53,15 @@ export default function ForgotPasswordScreen() {
     if (error) setError('');
   }
 
+  const inputClass = `w-full pl-11 pr-4 py-3.5 bg-[var(--bg-input)] border rounded-[12px] text-[var(--text-primary)] text-[15px] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-glow-strong)] focus:border-[var(--border-accent)] transition-all duration-200 ${
+    fieldError ? 'border-[var(--danger)]' : 'border-[var(--border-primary)]'
+  }`;
+
   return (
-    <div className="min-h-[100dvh] w-full flex items-center justify-center px-4 py-8 relative overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
+    <div className="h-[100dvh] w-full flex relative overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
       {/* Brand doodle-style watermark */}
       <div
-        className="absolute inset-0 pointer-events-none opacity-[0.5]"
+        className="absolute inset-0 pointer-events-none opacity-[0.35]"
         style={{
           backgroundImage:
             'radial-gradient(var(--border-accent) 1px, transparent 1.5px), radial-gradient(var(--border-accent) 1px, transparent 1.5px)',
@@ -58,18 +70,44 @@ export default function ForgotPasswordScreen() {
         }}
       />
 
+      {/* Aurora orbs */}
       <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        className="w-full max-w-[400px] relative z-10"
-      >
-        {/* Card */}
-        <div className="glass-strong rounded-[28px] p-8 relative overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[var(--accent-primary)] via-[var(--accent-secondary)] to-[var(--accent-gradient-end)]" />
+        aria-hidden
+        className="absolute top-[-18%] left-[-22%] w-[70vmax] h-[70vmax] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, var(--accent-primary) 0%, transparent 65%)', filter: 'blur(80px)' }}
+        animate={{ opacity: [0.1, 0.2, 0.1] }}
+        transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <motion.div
+        aria-hidden
+        className="absolute bottom-[-28%] right-[-18%] w-[60vmax] h-[60vmax] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, #22D3EE 0%, transparent 65%)', filter: 'blur(90px)' }}
+        animate={{ opacity: [0.06, 0.13, 0.06] }}
+        transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut' }}
+      />
+
+      <div className="relative z-10 w-full h-full flex flex-col items-center overflow-y-auto">
+        <div className="w-full max-w-[400px] flex flex-col flex-1 px-5 sm:px-8 py-6 sm:py-10 pb-[calc(env(safe-area-inset-bottom)+32px)]">
+          {/* Logo + brand */}
+          <motion.div
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="flex flex-col items-center mb-8 sm:mb-10"
+          >
+            <div
+              className="w-[64px] h-[64px] rounded-[20px] flex items-center justify-center shadow-[var(--accent-shadow-lg)] border border-white/15"
+              style={{ background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-gradient-end))' }}
+            >
+              <NovaLogo />
+            </div>
+            <h2 className="mt-3 text-[22px] font-bold tracking-tight text-[var(--text-primary)]">
+              Nova<span className="text-[var(--accent-primary)]">Chat</span>
+            </h2>
+          </motion.div>
 
           {sent ? (
-            <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-4">
+            <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="flex-1 flex flex-col justify-center text-center">
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -90,31 +128,26 @@ export default function ForgotPasswordScreen() {
               </button>
             </motion.div>
           ) : (
-            <>
-              <div className="text-center mb-6">
-                <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="w-[72px] h-[72px] rounded-[24px] flex items-center justify-center mx-auto mb-4"
-                  style={{ background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-gradient-end))' }}
-                >
-                  <HiOutlineEnvelope className="w-9 h-9 text-white" />
-                </motion.div>
-                <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-1">Reset Password</h2>
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
+              className="flex-1 flex flex-col justify-center"
+            >
+              <div className="mb-6">
+                <h2 className="text-[26px] font-bold tracking-tight text-[var(--text-primary)] mb-1">Reset Password</h2>
                 <p className="text-[var(--text-secondary)] text-[14px]">Enter your email and we&apos;ll send you a reset link</p>
               </div>
 
               <form onSubmit={handleReset} className="space-y-5">
-                <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
+                <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 }}>
                   <label className="block text-[13px] font-medium text-[var(--text-secondary)] mb-2 ml-1">Email</label>
                   <div className="relative group">
                     <HiOutlineEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[var(--text-muted)] group-focus-within:text-[var(--accent-primary)] transition-colors" />
                     <input
                       type="email" value={email} onChange={(e) => handleEmailChange(e.target.value)}
                       placeholder="name@example.com" required autoComplete="email"
-                      className={`w-full pl-11 pr-4 py-3.5 bg-[var(--bg-input)] border rounded-[12px] text-[var(--text-primary)] text-[15px] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-glow-strong)] focus:border-[var(--border-accent)] transition-all duration-200 ${
-                        fieldError ? 'border-[var(--danger)]' : 'border-[var(--border-primary)]'
-                      }`}
+                      className={inputClass}
                     />
                   </div>
                   <AnimatePresence>
@@ -148,10 +181,14 @@ export default function ForgotPasswordScreen() {
                   </button>
                 </div>
               </form>
-            </>
+            </motion.div>
           )}
+
+          <p className="mt-8 text-center text-[var(--text-secondary)] text-[12px] font-medium">
+            Protected by end-to-end encryption
+          </p>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

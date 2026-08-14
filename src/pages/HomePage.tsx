@@ -83,6 +83,7 @@ export default function HomePage() {
 
   const openConversation = useCallback(async (otherUserId: string) => {
     if (!currentUser) return;
+    if (!otherUserId || otherUserId === currentUser.uid) return;
     setStartError(null);
     setOpeningUserId(otherUserId);
     try {
