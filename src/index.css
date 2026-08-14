@@ -371,6 +371,17 @@ input:-webkit-autofill:focus {
   border-radius: 8px;
 }
 
+/* ── Nebula star particles (Auth) ─────────────── */
+@keyframes nebula-twinkle {
+  0%, 100% { opacity: 0.1; transform: scale(0.8); }
+  50% { opacity: 0.8; transform: scale(1.2); }
+}
+
+.auth-star {
+  animation: nebula-twinkle 4s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
 /* ── Glassmorphism Utility ───────────────────────── */
 .glass {
   background: var(--bg-glass);

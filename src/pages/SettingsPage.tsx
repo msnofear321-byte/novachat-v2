@@ -8,6 +8,7 @@ import {
   HiOutlineClock, HiOutlineChevronRight, HiOutlineArrowLeft,
   HiOutlineServerStack, HiOutlinePhoneArrowUpRight, HiOutlineShieldCheck,
 } from 'react-icons/hi2';
+import { FaInstagram } from 'react-icons/fa';
 import { useTheme, THEMES, FONTS } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useWallpaper } from '@/context/WallpaperContext';
@@ -18,6 +19,7 @@ import UserAvatar from '@/components/UserAvatar';
 import { updateUserProfile } from '@/services/firestore';
 import { uploadToCloudinary } from '@/services/cloudinary';
 import { getDisplayName } from '@/utils/userDisplay';
+import { sanitizeInstagram } from '@/utils/instagram';
 import { logout } from '@/services/auth';
 import { useState, useRef, useEffect } from 'react';
 
@@ -99,6 +101,7 @@ export default function SettingsPage() {
   const [displayName, setDisplayName] = useState(userProfile?.displayName || user?.displayName || '');
   const [about, setAbout] = useState(userProfile?.about || '');
   const [phone, setPhone] = useState(userProfile?.phone || '');
+  const [instagram, setInstagram] = useState(userProfile?.instagram || '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -198,7 +201,9 @@ export default function SettingsPage() {
     setSaving(true);
     setSaveError('');
     try {
-      const data: Record<string, unknown> = { displayName: displayName.trim() };
+      const ig = sanitizeInstagram(instagram);
+      setInstagram(ig);
+      const data: Record<string, unknown> = { displayName: displayName.trim(), instagram: ig };
       if (about !== undefined) data.about = about.trim();
       if (phone !== undefined) data.phone = phone.trim();
       await updateUserProfile(user.uid, data);
@@ -299,6 +304,9 @@ export default function SettingsPage() {
                     <p className="text-[var(--text-secondary)] text-[14px] truncate">{user?.email}</p>
                     {userProfile?.about && (
                       <p className="text-[var(--text-muted)] text-[13px] truncate mt-0.5">{userProfile.about}</p>
+                    )}
+                    {userProfile?.instagram && (
+                      <p className="text-[var(--accent-secondary)] text-[13px] truncate mt-0.5">@{userProfile.instagram}</p>
                     )}
                   </div>
                   <button onClick={() => open('profile')}
@@ -429,6 +437,21 @@ export default function SettingsPage() {
                         <label className="text-[12px] text-[var(--text-muted)] mb-1 block">Phone</label>
                         <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 234 567 890"
                           className={inputCls} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="premium-card p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-[10px] bg-[var(--accent-glow)] flex items-center justify-center text-[var(--accent-secondary)]">
+                        <FaInstagram className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-[12px] text-[var(--text-muted)] mb-1 block">Instagram / @username</label>
+                        <div className="flex items-center">
+                          <span className="text-[var(--text-muted)] mr-1">@</span>
+                          <input type="text" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="username"
+                            autoCapitalize="none" autoCorrect="off" spellCheck={false} className={inputCls} />
+                        </div>
                       </div>
                     </div>
                   </div>

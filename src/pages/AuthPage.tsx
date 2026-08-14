@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, type FormEvent, type MouseEvent, type FocusEvent } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, type FormEvent, type MouseEvent, type FocusEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FcGoogle } from 'react-icons/fc';
@@ -110,6 +110,49 @@ function NovaTile({ size = 88 }: { size?: number }) {
     >
       <NovaLogo size={size * 0.68} />
     </motion.div>
+  );
+}
+
+function AuthStarField() {
+  const stars = useMemo(() => {
+    const list: { left: string; top: string; size: number; delay: string; duration: string; purple: boolean }[] = [];
+    let seed = 42;
+    const rand = () => {
+      seed = (seed * 9301 + 49297) % 233280;
+      return seed / 233280;
+    };
+    for (let i = 0; i < 44; i++) {
+      list.push({
+        left: `${(rand() * 100).toFixed(2)}%`,
+        top: `${(rand() * 100).toFixed(2)}%`,
+        size: rand() > 0.85 ? 2.5 : 1.5,
+        delay: `${(rand() * 6).toFixed(2)}s`,
+        duration: `${(2.6 + rand() * 3.4).toFixed(2)}s`,
+        purple: rand() > 0.72,
+      });
+    }
+    return list;
+  }, []);
+
+  return (
+    <div aria-hidden className="absolute inset-0 overflow-hidden pointer-events-none">
+      {stars.map((s, i) => (
+        <span
+          key={i}
+          className="auth-star absolute rounded-full"
+          style={{
+            left: s.left,
+            top: s.top,
+            width: s.size,
+            height: s.size,
+            background: s.purple ? 'var(--accent-tertiary)' : '#FFFFFF',
+            opacity: s.purple ? 0.5 : 0.6,
+            animationDelay: s.delay,
+            animationDuration: s.duration,
+          }}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -295,6 +338,9 @@ export default function AuthPage() {
         }}
       />
 
+      {/* Nebula star particles */}
+      <AuthStarField />
+
       {/* Aurora orbs (whole page, subtle) */}
       <motion.div
         aria-hidden
@@ -437,6 +483,7 @@ export default function AuthPage() {
                     exit="exit"
                     transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                     onSubmit={handleLogin}
+                    autoComplete="off"
                     className="space-y-5"
                   >
                     {/* Header */}
@@ -468,7 +515,7 @@ export default function AuthPage() {
                           }}
                           placeholder="name@example.com"
                           required
-                          autoComplete="email"
+                          autoComplete="off"
                           className={inputClass(!!loginErrors.email)}
                         />
                       </div>
@@ -500,7 +547,7 @@ export default function AuthPage() {
                           }}
                           placeholder="Enter your password"
                           required
-                          autoComplete="current-password"
+                          autoComplete="off"
                           className={`${inputClass(!!loginErrors.password)} !pr-12`}
                         />
                         <button
@@ -607,6 +654,7 @@ export default function AuthPage() {
                     exit="exit"
                     transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                     onSubmit={handleRegister}
+                    autoComplete="off"
                     className="space-y-4"
                   >
                     {/* Header */}
@@ -659,7 +707,7 @@ export default function AuthPage() {
                                 type="text" name="displayName" value={regName}
                                 onChange={(e) => handleRegChange('displayName', e.target.value)}
                                 onBlur={handleRegBlur}
-                                placeholder="John Doe" autoComplete="name"
+                                placeholder="John Doe" autoComplete="off"
                                 className={inputClass(!!(touched.displayName && fieldErrors.displayName))}
                               />
                             </div>
@@ -680,7 +728,7 @@ export default function AuthPage() {
                                 type="email" name="email" value={regEmail}
                                 onChange={(e) => handleRegChange('email', e.target.value)}
                                 onBlur={handleRegBlur}
-                                placeholder="name@example.com" autoComplete="email"
+                                placeholder="name@example.com" autoComplete="off"
                                 className={inputClass(!!(touched.email && fieldErrors.email))}
                               />
                             </div>

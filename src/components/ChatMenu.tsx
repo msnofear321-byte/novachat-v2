@@ -566,7 +566,7 @@ export default function ChatMenu({
               className="fixed inset-0 z-40" onClick={close} />
             <motion.div initial={{ opacity: 0, scale: 0.92, y: -8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.92, y: -8 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute right-0 top-full mt-2 w-[272px] sm:w-[300px] glass-premium rounded-[20px] shadow-[var(--shadow-xl)] z-50 overflow-hidden max-h-[min(70vh,540px)] flex flex-col">
+              className="absolute right-0 top-full mt-2 w-[272px] sm:w-[300px] glass-premium rounded-[16px] shadow-[var(--shadow-xl)] z-50 overflow-hidden max-h-[min(70vh,540px)] flex flex-col">
               <div className="h-[2px] bg-gradient-to-r from-transparent via-[var(--accent-primary)]/30 to-transparent flex-shrink-0" />
               <div className="py-1 overflow-y-auto custom-scrollbar flex-1">{renderMenuItems()}</div>
             </motion.div>

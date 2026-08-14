@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
 import { subscribeToConversations, subscribeToTypingStatus } from '@/services/firestore';
 import { isOnlineNow, PRESENCE_TICK_MS } from '@/services/presence';
-import { getDisplayName } from '@/utils/userDisplay';
+import { normalizePhone } from '@/utils/phone';
 import { getConversationOtherId } from '@/utils/chatNavigation';
 import { useAuth } from '@/context/AuthContext';
 import { useUserProfiles } from '@/hooks/useUserProfiles';
@@ -103,18 +103,32 @@ export default function ChatList({ searchQuery, activeConversationId, refreshKey
   const pinned = conversations.filter((c) => c.pinned);
   const unpinned = conversations.filter((c) => !c.pinned);
 
-  const filter = (convs: Conversation[]) =>
-    searchQuery.trim()
-      ? convs.filter((c) => {
-          if (c.type === 'group') {
-            return (c.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-              c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase());
-          }
-          const otherId = resolveOtherId(c, currentUser?.uid);
-          const u = otherId ? userMap[otherId] : undefined;
-          return (u ? getDisplayName(u).toLowerCase().includes(searchQuery.toLowerCase()) : false) || c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase());
-        })
-      : convs;
+  const filter = (convs: Conversation[]) => {
+    const q = searchQuery.trim().toLowerCase();
+    const phoneQ = q ? normalizePhone(q) : '';
+    if (!q) return convs;
+    return convs.filter((c) => {
+      if (c.type === 'group') {
+        return (c.name || '').toLowerCase().includes(q) || c.lastMessage.toLowerCase().includes(q);
+      }
+      const otherId = resolveOtherId(c, currentUser?.uid);
+      const u = otherId ? userMap[otherId] : undefined;
+      if (!u) return c.lastMessage.toLowerCase().includes(q);
+      const name = (u.displayName || '').toLowerCase();
+      const username = (u.username || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      const uid = (u.uid || '').toLowerCase();
+      const phone = u.phone ? normalizePhone(u.phone) : '';
+      return (
+        name.includes(q) ||
+        username.includes(q) ||
+        email.includes(q) ||
+        uid.includes(q) ||
+        (phone && phoneQ && phone.includes(phoneQ)) ||
+        c.lastMessage.toLowerCase().includes(q)
+      );
+    });
+  };
 
   const filteredPinned = filter(pinned);
   const filteredUnpinned = filter(unpinned);

@@ -20,6 +20,8 @@ export interface User {
   createdAt: number;
   about?: string;
   phone?: string;
+  /** Instagram handle (username only, without leading "@"). */
+  instagram?: string;
   fcmToken?: string;
 }
 

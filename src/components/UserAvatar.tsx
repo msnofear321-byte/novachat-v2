@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 interface UserAvatarProps {
   photoURL?: string;
   displayName: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   online?: boolean;
   className?: string;
 }
@@ -13,12 +13,14 @@ const sizes = {
   sm: 'w-8 h-8 text-[11px]',
   md: 'w-11 h-11 text-[14px]',
   lg: 'w-[52px] h-[52px] text-[17px]',
+  xl: 'w-24 h-24 text-[30px]',
 };
 
 const dotSizes = {
   sm: 'w-2.5 h-2.5 right-0 bottom-0 border-[1.5px]',
   md: 'w-3 h-3 right-0 bottom-0 border-2',
   lg: 'w-3.5 h-3.5 right-0.5 bottom-0.5 border-2',
+  xl: 'w-4 h-4 right-1 bottom-1 border-[3px]',
 };
 
 function UserAvatar({ photoURL, displayName, size = 'md', online, className = '' }: UserAvatarProps) {

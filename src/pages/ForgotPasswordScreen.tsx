@@ -139,14 +139,14 @@ export default function ForgotPasswordScreen() {
                 <p className="text-[var(--text-secondary)] text-[14px]">Enter your email and we&apos;ll send you a reset link</p>
               </div>
 
-              <form onSubmit={handleReset} className="space-y-5">
+              <form onSubmit={handleReset} autoComplete="off" className="space-y-5">
                 <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 }}>
                   <label className="block text-[13px] font-medium text-[var(--text-secondary)] mb-2 ml-1">Email</label>
                   <div className="relative group">
                     <HiOutlineEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[var(--text-muted)] group-focus-within:text-[var(--accent-primary)] transition-colors" />
                     <input
                       type="email" value={email} onChange={(e) => handleEmailChange(e.target.value)}
-                      placeholder="name@example.com" required autoComplete="email"
+                      placeholder="name@example.com" required autoComplete="off"
                       className={inputClass}
                     />
                   </div>

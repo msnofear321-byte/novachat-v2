@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
 import { HiOutlineMagnifyingGlass, HiOutlineXMark, HiOutlineUserGroup, HiOutlinePencilSquare, HiOutlineShieldCheck, HiOutlineArrowRight } from 'react-icons/hi2';
@@ -13,7 +13,7 @@ import { getAllUsers, searchUsers } from '@/services/firestore';
 import { openConversationWithUser } from '@/utils/chatNavigation';
 import { getDisplayName } from '@/utils/userDisplay';
 import { isOnlineNow } from '@/services/presence';
-import { isPhoneQuery } from '@/utils/phone';
+import { isPhoneQuery, normalizePhone } from '@/utils/phone';
 import UserAvatar from '@/components/UserAvatar';
 import type { User } from '@/types';
 
@@ -66,6 +66,7 @@ export default function HomePage() {
       return;
     }
     setSearchingUsers(true);
+    setUserResults([]);
     clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(async () => {
       try {
@@ -77,9 +78,41 @@ export default function HomePage() {
       } finally {
         setSearchingUsers(false);
       }
-    }, 250);
+    }, 120);
     return () => clearTimeout(searchTimer.current);
   }, [query]);
+
+  // Instant local matches from the already-loaded user list (no network wait),
+  // so results render on the very next keystroke. The server search below then
+  // enriches/refreshes the set. Merged results are keyed by uid with server
+  // results taking precedence.
+  const instantMatches = useMemo(() => {
+    const q = query.trim();
+    if (!q) return [];
+    const lower = q.toLowerCase();
+    const phoneQ = normalizePhone(q);
+    return allUsers.filter((u) => {
+      const name = (u.displayName || '').toLowerCase();
+      const username = (u.username || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      const uid = (u.uid || '').toLowerCase();
+      const phone = u.phone ? normalizePhone(u.phone) : '';
+      return (
+        name.includes(lower) ||
+        username.includes(lower) ||
+        email.includes(lower) ||
+        uid.includes(lower) ||
+        (phone && phoneQ && phone.includes(phoneQ))
+      );
+    });
+  }, [allUsers, query]);
+
+  const mergedResults = useMemo(() => {
+    const map = new Map<string, User>();
+    instantMatches.forEach((u) => map.set(u.uid, u));
+    userResults.forEach((u) => map.set(u.uid, u));
+    return [...map.values()];
+  }, [instantMatches, userResults]);
 
   const openConversation = useCallback(async (otherUserId: string) => {
     if (!currentUser) return;
@@ -140,7 +173,7 @@ export default function HomePage() {
               className="flex-1 bg-transparent text-[var(--text-primary)] text-[14px] sm:text-[15px] placeholder-[var(--text-muted)] focus:outline-none"
             />
             {query && (
-              <button onClick={() => setQuery('')} aria-label="Clear search" className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--hover-bg)] transition-colors flex-shrink-0">
+              <button onClick={() => setQuery('')} aria-label="Clear search" className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--hover-bg)] active:scale-90 transition-all duration-150 flex-shrink-0">
                 <HiOutlineXMark className="w-4 h-4" />
               </button>
             )}
@@ -156,17 +189,17 @@ export default function HomePage() {
               <div className="px-5 pt-1 pb-1.5 flex items-center gap-2">
                 <span className="section-label">People</span>
               </div>
-              {searchingUsers ? (
+              {searchingUsers && mergedResults.length === 0 ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="w-5 h-5 border-2 border-[var(--text-muted)]/30 border-t-[var(--accent-primary)] rounded-full animate-spin" />
                 </div>
-              ) : userResults.length > 0 ? (
-                userResults.map((u) => (
+              ) : mergedResults.length > 0 ? (
+                mergedResults.map((u) => (
                   <button
                     key={u.uid}
                     onClick={() => openConversation(u.uid)}
                     disabled={openingUserId === u.uid}
-                    className="w-full flex items-center gap-3.5 px-5 py-3 text-left hover:bg-[var(--hover-bg)] active:bg-[var(--hover-bg-strong)] transition-colors cursor-pointer disabled:opacity-60"
+                    className="w-full flex items-center gap-3.5 px-5 py-3 text-left hover:bg-[var(--hover-bg)] active:bg-[var(--hover-bg-strong)] active:scale-[0.99] transition-all duration-150 cursor-pointer disabled:opacity-60 disabled:active:scale-100"
                   >
                     <UserAvatar photoURL={u.photoURL} displayName={getDisplayName(u)} size="md" online={isOnlineNow(u)} />
                     <div className="flex-1 min-w-0">
