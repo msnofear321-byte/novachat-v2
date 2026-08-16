@@ -51,17 +51,122 @@ const ICE_SERVERS: RTCConfiguration = {
 };
 
 const CALL_TIMEOUT_MS = 60000;
+const CONNECT_TIMEOUT_MS = 30000;
+const ICE_RETRY_MS = 5000;
 
 let peerConnection: RTCPeerConnection | null = null;
 let localStream: MediaStream | null = null;
 let remoteStream: MediaStream | null = null;
 let currentCallId: string | null = null;
 let callTimer: ReturnType<typeof setTimeout> | null = null;
+let connectTimer: ReturnType<typeof setTimeout> | null = null;
+let iceFailedTimer: ReturnType<typeof setTimeout> | null = null;
+let callBusy = false;
+let remoteEverHadVideo = false;
 let iceCandidateUnsubs: Unsubscribe[] = [];
 let callUnsub: Unsubscribe | null = null;
 let incomingUnsub: Unsubscribe | null = null;
 let pendingICECandidates: RTCIceCandidateInit[] = [];
 let remoteDescSet = false;
+
+export interface RemoteStreamInfo {
+  stream: MediaStream | null;
+  hasVideo: boolean;
+  cameraOff: boolean;
+  connecting: boolean;
+}
+
+const remoteListeners = new Set<(info: RemoteStreamInfo) => void>();
+const localListeners = new Set<(stream: MediaStream | null) => void>();
+
+function getRemoteInfo(): RemoteStreamInfo {
+  if (!remoteStream) return { stream: null, hasVideo: false, cameraOff: false, connecting: false };
+  const vt = remoteStream.getVideoTracks()[0];
+  const hasVideo = !!vt && vt.readyState === 'live';
+  const cameraOff = hasVideo && (vt.enabled === false || vt.muted === true);
+  return {
+    stream: remoteStream,
+    hasVideo,
+    cameraOff,
+    connecting: !hasVideo && !remoteEverHadVideo,
+  };
+}
+
+function notifyRemote() {
+  const info = getRemoteInfo();
+  remoteListeners.forEach((l) => { try { l(info); } catch { /* ignore */ } });
+}
+
+function notifyLocal() {
+  localListeners.forEach((l) => { try { l(localStream); } catch { /* ignore */ } });
+}
+
+/** Subscribe to remote stream changes (tracks added/removed, camera toggled). */
+export function onRemoteStreamChange(cb: (info: RemoteStreamInfo) => void): Unsubscribe {
+  remoteListeners.add(cb);
+  return () => { remoteListeners.delete(cb); };
+}
+
+/** Subscribe to local stream changes (created on call start / cleared on cleanup). */
+export function onLocalStreamChange(cb: (stream: MediaStream | null) => void): Unsubscribe {
+  localListeners.add(cb);
+  return () => { localListeners.delete(cb); };
+}
+
+function clearConnectTimer() {
+  if (connectTimer) { clearTimeout(connectTimer); connectTimer = null; }
+}
+
+function clearIceFailedTimer() {
+  if (iceFailedTimer) { clearTimeout(iceFailedTimer); iceFailedTimer = null; }
+}
+
+function startConnectTimer(callId: string) {
+  clearConnectTimer();
+  connectTimer = setTimeout(() => {
+    connectTimer = null;
+    if (currentCallId !== callId) return;
+    console.warn('[Call] Connection timed out, ending call', callId);
+    endCall(callId, 'Unable to connect. Please try again.');
+  }, CONNECT_TIMEOUT_MS);
+}
+
+function startIceRecovery() {
+  if (iceFailedTimer) return;
+  iceFailedTimer = setTimeout(() => {
+    iceFailedTimer = null;
+    const pc = peerConnection;
+    if (!pc || currentCallId === null) return;
+    const iceState = pc.iceConnectionState;
+    if (iceState === 'disconnected' || iceState === 'connected') {
+      console.log('[Call] ICE stalled, attempting restart');
+      try { pc.restartIce(); } catch { /* ignore */ }
+      iceFailedTimer = setTimeout(() => {
+        iceFailedTimer = null;
+        if (currentCallId) {
+          console.warn('[Call] ICE could not recover, ending call');
+          endCall(currentCallId, 'Unable to connect. Please try again.');
+        }
+      }, 15000);
+    } else {
+      console.warn('[Call] ICE failed, ending call');
+      if (currentCallId) endCall(currentCallId, 'Call connection failed. Please try again.');
+    }
+  }, ICE_RETRY_MS);
+}
+
+function markCallConnected() {
+  clearConnectTimer();
+  clearIceFailedTimer();
+  if (!currentCallId) return;
+  getDoc(getCallRef(currentCallId))
+    .then((snap) => {
+      if (snap.exists() && snap.data()?.status !== 'connected' && currentCallId) {
+        return updateDoc(getCallRef(currentCallId), { status: 'connected', startedAt: Date.now() });
+      }
+    })
+    .catch(() => {});
+}
 
 function getCallRef(callId: string) {
   return doc(db, 'calls', callId);
@@ -151,8 +256,46 @@ function createPeerConnection(): RTCPeerConnection {
   remoteDescSet = false;
 
   pc.ontrack = (event) => {
-    if (event.streams && event.streams[0]) {
-      remoteStream = event.streams[0];
+    const incoming = event.streams && event.streams[0];
+    if (incoming && remoteStream) {
+      incoming.getTracks().forEach((track) => {
+        if (!remoteStream!.getTracks().some((t) => t.id === track.id)) {
+          if (track.kind === 'video') remoteEverHadVideo = true;
+          remoteStream!.addTrack(track);
+          track.addEventListener('muted', notifyRemote);
+          track.addEventListener('unmuted', notifyRemote);
+          track.addEventListener('ended', notifyRemote);
+          console.log('[Call] Remote track attached:', track.kind, track.id);
+        }
+      });
+    }
+    notifyRemote();
+  };
+
+  pc.onconnectionstatechange = () => {
+    const state = pc.connectionState;
+    console.log('[Call] connectionState:', state);
+    if (state === 'connected') {
+      markCallConnected();
+    } else if (state === 'failed') {
+      console.warn('[Call] connectionState failed');
+      if (currentCallId) endCall(currentCallId, 'Call connection failed. Please try again.');
+    } else if (state === 'disconnected') {
+      startIceRecovery();
+    }
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    const state = pc.iceConnectionState;
+    console.log('[Call] iceConnectionState:', state);
+    if (state === 'connected' || state === 'completed') {
+      clearIceFailedTimer();
+      clearConnectTimer();
+      markCallConnected();
+    } else if (state === 'failed') {
+      startIceRecovery();
+    } else if (state === 'disconnected') {
+      startIceRecovery();
     }
   };
 
@@ -226,32 +369,40 @@ function cleanup() {
   if (peerConnection) {
     peerConnection.ontrack = null;
     peerConnection.onicecandidate = null;
+    peerConnection.onicecandidateerror = null;
+    peerConnection.onconnectionstatechange = null;
     peerConnection.oniceconnectionstatechange = null;
-    peerConnection.close();
+    try { peerConnection.close(); } catch { /* ignore */ }
     peerConnection = null;
   }
 
   if (localStream) {
     localStream.getTracks().forEach((t) => {
-      t.stop();
+      try { t.stop(); } catch { /* ignore */ }
       t.enabled = false;
     });
     localStream = null;
   }
 
   remoteStream = null;
+  remoteEverHadVideo = false;
   pendingICECandidates = [];
   remoteDescSet = false;
 
   iceCandidateUnsubs.forEach((unsub) => unsub());
   iceCandidateUnsubs = [];
 
+  clearConnectTimer();
+  clearIceFailedTimer();
   if (callTimer) {
     clearTimeout(callTimer);
     callTimer = null;
   }
 
   currentCallId = null;
+
+  notifyRemote();
+  notifyLocal();
 }
 
 // ── Public API ─────────────────────────────────────
@@ -277,45 +428,49 @@ export async function startCall(
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
 
-  if (currentCallId) {
+  if (callBusy || currentCallId) {
     console.warn('[Call] Already in a call, ignoring startCall');
     throw new Error('Already in a call');
   }
-
-  await forceCleanup();
-
-  const callerProfile = await getUserProfile(user.uid);
-  const callerName = callerProfile?.displayName || user.displayName || 'Unknown';
-  const callerPhoto = callerProfile?.photoURL || user.photoURL || '';
-
-  const receiverProfile = await getUserProfile(receiverId);
-  const resolvedReceiverName = receiverProfile?.displayName || receiverName || 'Unknown';
-  const resolvedReceiverPhoto = receiverProfile?.photoURL || receiverPhoto || '';
-
-  const receiverInCall = await checkUserInCall(receiverId);
-  if (receiverInCall) {
-    throw new Error('User is busy');
-  }
-
-  cleanup();
+  callBusy = true;
 
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({
-      video: type === 'video',
-      audio: true,
-    });
-  } catch {
-    throw new Error('Could not access camera/microphone');
-  }
+    await forceCleanup();
+
+    const callerProfile = await getUserProfile(user.uid);
+    const callerName = callerProfile?.displayName || user.displayName || 'Unknown';
+    const callerPhoto = callerProfile?.photoURL || user.photoURL || '';
+
+    const receiverProfile = await getUserProfile(receiverId);
+    const resolvedReceiverName = receiverProfile?.displayName || receiverName || 'Unknown';
+    const resolvedReceiverPhoto = receiverProfile?.photoURL || receiverPhoto || '';
+
+    const receiverInCall = await checkUserInCall(receiverId);
+    if (receiverInCall) {
+      throw new Error('User is busy');
+    }
+
+    cleanup();
+
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({
+        video: type === 'video',
+        audio: true,
+      });
+    } catch {
+      throw new Error(
+        type === 'video'
+          ? 'Camera permission is required for video calls.'
+          : 'Microphone permission is required for calls.',
+      );
+    }
+    notifyLocal();
 
   peerConnection = createPeerConnection();
   setupLocalTracks(peerConnection, localStream);
 
   const callId = `${user.uid}_${receiverId}_${Date.now()}`;
   currentCallId = callId;
-
-  const offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(offer);
 
   const callerCandidatesRef = getCallerCandidatesRef(callId);
   peerConnection.onicecandidate = (event) => {
@@ -328,6 +483,9 @@ export async function startCall(
     console.warn('[Call] ICE candidate error:', (event as RTCPeerConnectionIceErrorEvent).errorText);
   };
 
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(offer);
+
   const iceUnsub = subscribeIceCandidates(peerConnection, callId, 'receiver');
   iceCandidateUnsubs.push(iceUnsub);
 
@@ -339,40 +497,11 @@ export async function startCall(
       .setRemoteDescription(new RTCSessionDescription(data.answer))
       .then(() => {
         remoteDescSet = true;
-        return addPendingCandidates(peerConnection);
+        return addPendingCandidates(peerConnection!);
       })
+      .then(() => startConnectTimer(callId))
       .catch((err) => console.warn('[Call] Failed to apply remote answer:', err));
   });
-
-  peerConnection.onconnectionstatechange = () => {
-    const state = peerConnection?.connectionState;
-    console.log('[Call] Caller connection state:', state);
-    if (state === 'failed') {
-      console.log('[Call] Caller connection failed, ending call');
-      endCall(callId);
-    } else if (state === 'disconnected') {
-      console.log('[Call] Caller connection disconnected');
-    }
-  };
-
-  let iceFailedTimer: ReturnType<typeof setTimeout> | null = null;
-  peerConnection.oniceconnectionstatechange = () => {
-    const state = peerConnection?.iceConnectionState;
-    console.log('[Call] Caller ICE state:', state);
-    if (state === 'failed') {
-      if (!iceFailedTimer) {
-        iceFailedTimer = setTimeout(() => {
-          console.log('[Call] Caller ICE failed for too long, ending call');
-          endCall(callId);
-        }, 5000);
-      }
-    } else if (state === 'connected' || state === 'completed') {
-      if (iceFailedTimer) {
-        clearTimeout(iceFailedTimer);
-        iceFailedTimer = null;
-      }
-    }
-  };
 
   await setDoc(getCallRef(callId), {
     callerId: user.uid,
@@ -403,12 +532,14 @@ export async function startCall(
       try {
         await updateDoc(getCallRef(callId), { status: 'missed', endedAt: Date.now() });
       } catch { /* ignore */ }
-      cleanup();
-      window.dispatchEvent(new CustomEvent('call-ended', { detail: { callId } }));
+      endCall(callId, 'No answer. Please try again.');
     }
   }, CALL_TIMEOUT_MS);
 
-  return callId;
+    return callId;
+  } finally {
+    callBusy = false;
+  }
 }
 
 async function checkUserInCall(userId: string): Promise<boolean> {
@@ -471,105 +602,83 @@ export async function answerCall(
   const user = auth.currentUser;
   if (!user) throw new Error('Not authenticated');
 
+  if (callBusy || currentCallId) {
+    console.warn('[Call] Already in a call, cannot answer:', callId);
+    throw new Error('Already in a call');
+  }
+  callBusy = true;
+
   console.log('[Call] Answering call:', callId);
 
-  const callSnap = await getDoc(getCallRef(callId));
-  const callData = callSnap.data();
-  if (!callData?.offer) throw new Error('Call offer not found');
-
-  if (peerConnection) {
-    peerConnection.ontrack = null;
-    peerConnection.onicecandidate = null;
-    peerConnection.oniceconnectionstatechange = null;
-    peerConnection.close();
-    peerConnection = null;
-  }
-  if (localStream) {
-    localStream.getTracks().forEach((t) => { t.stop(); t.enabled = false; });
-    localStream = null;
-  }
-  remoteStream = null;
-  iceCandidateUnsubs.forEach((unsub) => unsub());
-  iceCandidateUnsubs = [];
-
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({
-      video,
-      audio: true,
+    const callSnap = await getDoc(getCallRef(callId));
+    const callData = callSnap.data();
+    if (!callData?.offer) {
+      throw new Error('Call offer not found');
+    }
+
+    cleanup();
+
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({
+        video,
+        audio: true,
+      });
+    } catch {
+      throw new Error(
+        video
+          ? 'Camera permission is required for video calls.'
+          : 'Microphone permission is required for calls.',
+      );
+    }
+    notifyLocal();
+
+    peerConnection = createPeerConnection();
+    setupLocalTracks(peerConnection, localStream);
+    currentCallId = callId;
+
+    const receiverCandidatesRef = getReceiverCandidatesRef(callId);
+    peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        addDoc(receiverCandidatesRef, event.candidate.toJSON()).catch(() => {});
+      }
+    };
+
+    peerConnection.onicecandidateerror = (event) => {
+      console.warn('[Call] ICE candidate error:', (event as RTCPeerConnectionIceErrorEvent).errorText);
+    };
+
+    const iceUnsub = subscribeIceCandidates(peerConnection, callId, 'caller');
+    iceCandidateUnsubs.push(iceUnsub);
+
+    if (peerConnection.signalingState !== 'stable') {
+      console.warn('[Call] Signaling state not stable, rolling back');
+      await peerConnection.setLocalDescription({ type: 'rollback' });
+    }
+
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(callData.offer));
+    remoteDescSet = true;
+
+    await addPendingCandidates(peerConnection);
+
+    const answer = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+
+    await updateDoc(getCallRef(callId), {
+      answer: { sdp: answer.sdp, type: answer.type },
+      status: 'connected',
+      startedAt: Date.now(),
     });
-  } catch {
-    throw new Error('Could not access camera/microphone');
+
+    console.log('[Call] Call answered and connected:', callId);
+
+    startConnectTimer(callId);
+  } finally {
+    callBusy = false;
   }
-
-  peerConnection = createPeerConnection();
-  setupLocalTracks(peerConnection, localStream);
-  currentCallId = callId;
-
-  const receiverCandidatesRef = getReceiverCandidatesRef(callId);
-  peerConnection.onicecandidate = (event) => {
-    if (event.candidate) {
-      addDoc(receiverCandidatesRef, event.candidate.toJSON()).catch(() => {});
-    }
-  };
-
-  peerConnection.onicecandidateerror = (event) => {
-    console.warn('[Call] ICE candidate error:', (event as RTCPeerConnectionIceErrorEvent).errorText);
-  };
-
-  const iceUnsub = subscribeIceCandidates(peerConnection, callId, 'caller');
-  iceCandidateUnsubs.push(iceUnsub);
-
-  if (peerConnection.signalingState !== 'stable') {
-    console.warn('[Call] Signaling state not stable, rolling back');
-    await peerConnection.setLocalDescription({ type: 'rollback' });
-  }
-
-  await peerConnection.setRemoteDescription(new RTCSessionDescription(callData.offer));
-  remoteDescSet = true;
-
-  await addPendingCandidates(peerConnection);
-
-  const answer = await peerConnection.createAnswer();
-  await peerConnection.setLocalDescription(answer);
-
-  await updateDoc(getCallRef(callId), {
-    answer: { sdp: answer.sdp, type: answer.type },
-    status: 'connected',
-    startedAt: Date.now(),
-  });
-
-  console.log('[Call] Call answered and connected:', callId);
-
-  peerConnection.onconnectionstatechange = () => {
-    const state = peerConnection?.connectionState;
-    console.log('[Call] Receiver connection state:', state);
-    if (state === 'failed') {
-      endCall(callId);
-    }
-  };
-
-  let iceFailedTimer: ReturnType<typeof setTimeout> | null = null;
-  peerConnection.oniceconnectionstatechange = () => {
-    const state = peerConnection?.iceConnectionState;
-    console.log('[Call] Receiver ICE state:', state);
-
-    if (state === 'failed') {
-      if (!iceFailedTimer) {
-        iceFailedTimer = setTimeout(() => {
-          console.log('[Call] ICE failed for too long, ending call');
-          endCall(callId);
-        }, 5000);
-      }
-    } else if (state === 'connected' || state === 'completed') {
-      if (iceFailedTimer) {
-        clearTimeout(iceFailedTimer);
-        iceFailedTimer = null;
-      }
-    }
-  };
 }
 
-export async function endCall(callId: string): Promise<void> {
+export async function endCall(callId: string, reason?: string): Promise<void> {
   const endedAt = Date.now();
   let duration = 0;
   let statusToSet = 'ended';
@@ -607,7 +716,7 @@ export async function endCall(callId: string): Promise<void> {
     await deleteSubcollections(callId);
   } catch { /* ignore */ }
 
-  window.dispatchEvent(new CustomEvent('call-ended', { detail: { callId } }));
+  window.dispatchEvent(new CustomEvent('call-ended', { detail: { callId, reason } }));
 }
 
 export async function rejectCall(callId: string): Promise<void> {
@@ -676,6 +785,7 @@ export async function switchCameraLocal(): Promise<void> {
   const videoTrack = localStream.getVideoTracks()[0];
   if (!videoTrack) return;
 
+  const wasEnabled = videoTrack.enabled;
   const settings = videoTrack.getSettings();
   const facingMode = settings.facingMode === 'user' ? 'environment' : 'user';
 
@@ -685,6 +795,7 @@ export async function switchCameraLocal(): Promise<void> {
   });
 
   const newTrack = newStream.getVideoTracks()[0];
+  newTrack.enabled = wasEnabled;
 
   if (peerConnection) {
     const sender = peerConnection.getSenders().find((s) => s.track?.kind === 'video');
@@ -695,6 +806,7 @@ export async function switchCameraLocal(): Promise<void> {
   localStream.removeTrack(videoTrack);
   localStream.addTrack(newTrack);
   newStream.getAudioTracks().forEach((t) => t.stop());
+  notifyLocal();
 }
 
 // ── Call History ───────────────────────────────────

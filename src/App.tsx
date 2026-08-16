@@ -14,12 +14,13 @@ const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const StatusPage = lazy(() => import('@/pages/StatusPage'));
 const NotesPage = lazy(() => import('@/pages/NotesPage'));
+const DocumentsPage = lazy(() => import('@/pages/DocumentsPage'));
 
 const GroupChatPage = lazy(() => import('@/components/GroupChatPage'));
 const SecretChatPage = lazy(() => import('@/pages/SecretChatPage'));
 
 /** Order of the main mobile tabs — used for swipe navigation + slide direction. */
-const TAB_PATHS = ['/', '/status', '/settings'];
+const TAB_PATHS = ['/', '/documents', '/settings'];
 
 function PageLoader() {
   return (
@@ -171,6 +172,15 @@ function AppRoutes() {
                   element={
                     <ProtectedRoute>
                       <StatusPage />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/documents"
+                  element={
+                    <ProtectedRoute>
+                      <DocumentsPage />
                     </ProtectedRoute>
                   }
                 />

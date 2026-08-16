@@ -74,6 +74,7 @@ export async function deleteMyNote(): Promise<void> {
 export function subscribeToNote(
   userId: string,
   callback: (note: ChatNote | null) => void,
+  onError?: (error: unknown) => void,
 ): Unsubscribe {
   if (!userId) return () => {};
   return onSnapshot(
@@ -101,16 +102,17 @@ export function subscribeToNote(
     },
     (error) => {
       console.error('subscribeToNote error:', error);
+      onError?.(error);
       callback(null);
     },
   );
 }
 
 /** Realtime subscription to the current user's own note. */
-export function subscribeToMyNote(callback: (note: ChatNote | null) => void): Unsubscribe {
+export function subscribeToMyNote(callback: (note: ChatNote | null) => void, onError?: (error: unknown) => void): Unsubscribe {
   const user = auth.currentUser;
   if (!user) return () => {};
-  return subscribeToNote(user.uid, callback);
+  return subscribeToNote(user.uid, callback, onError);
 }
 
 /** Human-friendly countdown, e.g. "7h 24m" or "23m". */

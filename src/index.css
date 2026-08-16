@@ -740,6 +740,71 @@ button, input, textarea, select {
   box-shadow: none;
 }
 
+/* ── Premium Input Fields ─────────────────────────
+   Single-layer inputs: label lives outside, icons sit in an absolutely
+   positioned wrapper (never over the placeholder), focus uses a subtle
+   purple glow. Padding is applied via utilities so `pl-11`/`pr-12` still win. */
+.input-premium {
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: 14px;
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1.5;
+  transition:
+    border-color 0.2s var(--ease-smooth),
+    box-shadow 0.2s var(--ease-smooth),
+    background-color 0.2s var(--ease-smooth);
+}
+
+.input-premium::placeholder {
+  color: var(--text-muted);
+}
+
+.input-premium:hover {
+  border-color: var(--border-accent);
+}
+
+.input-premium:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  background: var(--bg-input-focus);
+  box-shadow: 0 0 0 3px var(--accent-glow), 0 0 18px var(--accent-glow);
+}
+
+.input-premium:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.input-error {
+  border-color: var(--danger) !important;
+}
+
+.input-error:focus {
+  box-shadow: 0 0 0 3px var(--danger-bg) !important;
+}
+
+.input-icon {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+  pointer-events: none;
+  transition: color 0.2s var(--ease-smooth);
+}
+
+.input-group:focus-within .input-icon {
+  color: var(--accent-primary);
+}
+
+.input-group {
+  position: relative;
+}
+
 /* ── Theme transition for all elements ─────────────
    NOTE: intentionally NOT applied to every element — a global `transition`
    on `*` forces the browser to keep every node paintable/transitionable and

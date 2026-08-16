@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   HiOutlineEllipsisVertical,
+  HiOutlineEllipsisHorizontal,
   HiOutlineStar,
   HiOutlineMagnifyingGlass,
   HiOutlineArrowDownTray,
@@ -37,7 +38,7 @@ import {
 import type { Message, Conversation } from '@/types';
 import LiveLocationPanel from '@/components/LiveLocationPanel';
 
-type MenuView = 'main' | 'starred' | 'theme' | 'wallpaper' | 'wallpaper-solids' | 'wallpaper-gradients' | 'media' | 'report';
+type MenuView = 'main' | 'more' | 'starred' | 'theme' | 'wallpaper' | 'wallpaper-solids' | 'wallpaper-gradients' | 'media' | 'report';
 type MediaTab = 'media' | 'files' | 'links';
 
 interface ConfirmAction {
@@ -139,8 +140,15 @@ export default function ChatMenu({
     function handleClick(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) close();
     }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') close();
+    }
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
   }, [open, close]);
 
   async function handleClearChat() {
@@ -523,16 +531,13 @@ export default function ChatMenu({
         return renderMediaView();
       case 'report':
         return renderReportView();
-      default:
+      case 'more':
         return (
           <>
-            <MenuItem label={conversation?.pinned ? 'Unpin Chat' : 'Pin Chat'} icon={HiOutlineMapPin} onClick={handlePin} loading={actionLoading} />
+            <MenuHeader title="More Options" onBack={() => setView('main')} />
             <MenuItem label="Chat Info" icon={HiOutlineUser} onClick={() => { onOpenInfo?.(); close(); }} />
-            <MenuItem label="Search Messages" icon={HiOutlineMagnifyingGlass} onClick={() => { onSearchOpen(); close(); }} />
             <MenuItem label="Star Messages" icon={HiOutlineStar} onClick={handleStarredMessages} />
             <MenuItem label="Media, Files & Links" icon={HiOutlinePhoto} onClick={handleMediaFilesLinks} />
-            <div className="mx-3 my-1 border-t border-[var(--border-primary)]" />
-            <MenuItem label={conversation?.muted ? 'Unmute Notifications' : 'Mute Notifications'} icon={HiOutlineBellSlash} onClick={handleMute} loading={actionLoading} />
             <MenuItem label={conversation?.archived ? 'Unarchive Chat' : 'Archive Chat'} icon={HiOutlineArchiveBox} onClick={handleArchive} loading={actionLoading} />
             <MenuItem label="Export Chat" icon={HiOutlineArrowDownTray} onClick={handleExportChat} loading={actionLoading} />
             <div className="mx-3 my-1 border-t border-[var(--border-primary)]" />
@@ -540,11 +545,24 @@ export default function ChatMenu({
             <MenuItem label="Wallpaper" icon={HiOutlinePhoto} onClick={() => setView('wallpaper')} trailing />
             <MenuItem label="Share Live Location" icon={HiOutlineMapPin} onClick={() => setShowLiveLocation(true)} />
             <div className="mx-3 my-1 border-t border-[var(--border-primary)]" />
-            <MenuItem label="Clear Chat" icon={HiOutlineTrash} onClick={handleClearChat} loading={actionLoading} danger />
             <MenuItem label="Delete Chat" icon={HiOutlineTrash} onClick={handleDeleteChat} loading={actionLoading} danger />
+            <MenuItem label="Report User" icon={HiOutlineFlag} onClick={() => setView('report')} />
+          </>
+        );
+      case 'main':
+      default:
+        return (
+          <>
+            <MenuItem label="Search" icon={HiOutlineMagnifyingGlass} onClick={() => { onSearchOpen(); close(); }} />
+            <MenuItem label="Chat Info" icon={HiOutlineUser} onClick={() => { onOpenInfo?.(); close(); }} />
+            <MenuItem label={conversation?.muted ? 'Unmute Notifications' : 'Mute Notifications'} icon={HiOutlineBellSlash} onClick={handleMute} loading={actionLoading} />
+            <MenuItem label={conversation?.pinned ? 'Unpin Chat' : 'Pin Chat'} icon={HiOutlineMapPin} onClick={handlePin} loading={actionLoading} />
             <div className="mx-3 my-1 border-t border-[var(--border-primary)]" />
+            <MenuItem label="Clear Chat" icon={HiOutlineTrash} onClick={handleClearChat} loading={actionLoading} danger />
             <MenuItem label={isBlocked ? 'Unblock User' : 'Block User'} icon={HiOutlineBan} onClick={handleBlock} loading={actionLoading} danger={!isBlocked} />
             <MenuItem label="Report User" icon={HiOutlineFlag} onClick={() => setView('report')} />
+            <div className="mx-3 my-1 border-t border-[var(--border-primary)]" />
+            <MenuItem label="More" icon={HiOutlineEllipsisHorizontal} onClick={() => setView('more')} trailing />
           </>
         );
     }
@@ -565,10 +583,10 @@ export default function ChatMenu({
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 z-40" onClick={close} />
             <motion.div initial={{ opacity: 0, scale: 0.92, y: -8 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.92, y: -8 }}
-              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute right-0 top-full mt-2 w-[272px] sm:w-[300px] glass-premium rounded-[16px] shadow-[var(--shadow-xl)] z-50 overflow-hidden max-h-[min(70vh,540px)] flex flex-col">
+              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute right-0 top-full mt-2 w-[272px] sm:w-[300px] glass-premium rounded-[16px] shadow-[var(--shadow-xl)] z-50 overflow-hidden max-h-[min(65vh,460px)] flex flex-col">
               <div className="h-[2px] bg-gradient-to-r from-transparent via-[var(--accent-primary)]/30 to-transparent flex-shrink-0" />
-              <div className="py-1 overflow-y-auto custom-scrollbar flex-1">{renderMenuItems()}</div>
+              <div className="py-1 overflow-y-auto custom-scrollbar flex-1 overscroll-contain">{renderMenuItems()}</div>
             </motion.div>
           </>
         )}
@@ -627,7 +645,7 @@ function MenuItem({ label, icon: Icon, onClick, loading = false, danger = false,
 }) {
   return (
     <button onClick={onClick} disabled={loading}
-      className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all disabled:opacity-50 hover:bg-[var(--hover-bg)]`}>
+      className={`w-full min-h-[44px] flex items-center gap-3 px-4 py-3 text-left transition-all disabled:opacity-50 hover:bg-[var(--hover-bg)]`}>
       {Icon && <Icon className={`w-[18px] h-[18px] flex-shrink-0 ${danger ? 'text-[var(--danger)]' : 'text-[var(--text-secondary)]'}`} />}
       <span className={`flex-1 text-[13px] ${danger ? 'text-[var(--danger)]' : 'text-[var(--text-primary)]'}`}>{label}</span>
       {loading && <div className="w-4 h-4 border-2 border-[var(--text-muted)]/30 border-t-[var(--accent-primary)] rounded-full animate-spin" />}

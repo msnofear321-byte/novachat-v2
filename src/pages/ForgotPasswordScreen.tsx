@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlineEnvelope } from 'react-icons/hi2';
 import { resetPassword } from '@/services/auth';
 
 function validateEmail(email: string): string {
@@ -53,7 +52,7 @@ export default function ForgotPasswordScreen() {
     if (error) setError('');
   }
 
-  const inputClass = `w-full pl-11 pr-4 py-3.5 bg-[var(--bg-input)] border rounded-[12px] text-[var(--text-primary)] text-[15px] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-glow-strong)] focus:border-[var(--border-accent)] transition-all duration-200 ${
+  const inputClass = `w-full px-4 py-3.5 bg-[var(--bg-input)] border rounded-[12px] text-[var(--text-primary)] text-[15px] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-glow-strong)] focus:border-[var(--border-accent)] transition-all duration-200 ${
     fieldError ? 'border-[var(--danger)]' : 'border-[var(--border-primary)]'
   }`;
 
@@ -142,14 +141,11 @@ export default function ForgotPasswordScreen() {
               <form onSubmit={handleReset} autoComplete="off" className="space-y-5">
                 <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 }}>
                   <label className="block text-[13px] font-medium text-[var(--text-secondary)] mb-2 ml-1">Email</label>
-                  <div className="relative group">
-                    <HiOutlineEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[var(--text-muted)] group-focus-within:text-[var(--accent-primary)] transition-colors" />
-                    <input
-                      type="email" value={email} onChange={(e) => handleEmailChange(e.target.value)}
-                      placeholder="name@example.com" required autoComplete="off"
-                      className={inputClass}
-                    />
-                  </div>
+                  <input
+                    type="email" value={email} onChange={(e) => handleEmailChange(e.target.value)}
+                    placeholder="name@example.com" required autoComplete="off"
+                    className={inputClass}
+                  />
                   <AnimatePresence>
                     {fieldError && (
                       <motion.p

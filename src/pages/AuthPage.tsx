@@ -2,7 +2,6 @@ import { useState, useCallback, useRef, useEffect, useMemo, type FormEvent, type
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FcGoogle } from 'react-icons/fc';
-import { HiOutlineEnvelope, HiOutlineLockClosed, HiOutlineUser } from 'react-icons/hi2';
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai';
 import { loginWithEmail, loginWithGoogle, registerWithEmail } from '@/services/auth';
 
@@ -313,9 +312,7 @@ export default function AuthPage() {
   const strength = passwordStrength(regPassword);
 
   const inputClass = (hasError: boolean) =>
-    `w-full pl-11 pr-4 py-3.5 bg-[var(--bg-input)] border rounded-[12px] text-[var(--text-primary)] text-[15px] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-glow-strong)] focus:border-[var(--border-accent)] transition-all duration-200 ${
-      hasError ? 'border-[var(--danger)]' : 'border-[var(--border-primary)]'
-    }`;
+    `input-premium w-full px-4 py-3.5 ${hasError ? 'input-error' : ''}`;
 
   const slideVariants = {
     enter: (direction: number) => ({ x: direction > 0 ? 300 : -300, opacity: 0 }),
@@ -504,21 +501,18 @@ export default function AuthPage() {
                     {/* Email */}
                     <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
                       <label className="block text-[13px] font-medium text-[var(--text-secondary)] mb-2 ml-1">Email</label>
-                      <div className="relative group">
-                        <HiOutlineEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[var(--text-muted)] group-focus-within:text-[var(--accent-primary)] transition-colors" />
-                        <input
-                          type="email"
-                          value={loginEmail}
-                          onChange={(e) => {
-                            setLoginEmail(e.target.value);
-                            if (loginErrors.email) setLoginErrors((p) => ({ ...p, email: '' }));
-                          }}
-                          placeholder="name@example.com"
-                          required
-                          autoComplete="off"
-                          className={inputClass(!!loginErrors.email)}
-                        />
-                      </div>
+                      <input
+                        type="email"
+                        value={loginEmail}
+                        onChange={(e) => {
+                          setLoginEmail(e.target.value);
+                          if (loginErrors.email) setLoginErrors((p) => ({ ...p, email: '' }));
+                        }}
+                        placeholder="name@example.com"
+                        required
+                        autoComplete="off"
+                        className={inputClass(!!loginErrors.email)}
+                      />
                       <AnimatePresence>
                         {loginErrors.email && (
                           <motion.p
@@ -536,8 +530,7 @@ export default function AuthPage() {
                     {/* Password */}
                     <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35 }}>
                       <label className="block text-[13px] font-medium text-[var(--text-secondary)] mb-2 ml-1">Password</label>
-                      <div className="relative group">
-                        <HiOutlineLockClosed className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[var(--text-muted)] group-focus-within:text-[var(--accent-primary)] transition-colors" />
+                      <div className="relative">
                         <input
                           type={showLoginPassword ? 'text' : 'password'}
                           value={loginPassword}
@@ -548,12 +541,13 @@ export default function AuthPage() {
                           placeholder="Enter your password"
                           required
                           autoComplete="off"
-                          className={`${inputClass(!!loginErrors.password)} !pr-12`}
+                          className={`${inputClass(!!loginErrors.password)} pr-12`}
                         />
                         <button
                           type="button"
                           onClick={() => setShowLoginPassword(!showLoginPassword)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--accent-primary)] transition-colors p-0.5"
+                          aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--accent-primary)] transition-colors p-1"
                         >
                           {showLoginPassword ? <AiOutlineEyeInvisible className="w-[18px] h-[18px]" /> : <AiOutlineEye className="w-[18px] h-[18px]" />}
                         </button>
@@ -701,16 +695,13 @@ export default function AuthPage() {
                           {/* Name */}
                           <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
                             <label className="block text-[13px] font-medium text-[var(--text-secondary)] mb-2 ml-1">Full Name</label>
-                            <div className="relative group">
-                              <HiOutlineUser className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[var(--text-muted)] group-focus-within:text-[var(--accent-primary)] transition-colors" />
-                              <input
-                                type="text" name="displayName" value={regName}
-                                onChange={(e) => handleRegChange('displayName', e.target.value)}
-                                onBlur={handleRegBlur}
-                                placeholder="John Doe" autoComplete="off"
-                                className={inputClass(!!(touched.displayName && fieldErrors.displayName))}
-                              />
-                            </div>
+                            <input
+                              type="text" name="displayName" value={regName}
+                              onChange={(e) => handleRegChange('displayName', e.target.value)}
+                              onBlur={handleRegBlur}
+                              placeholder="John Doe" autoComplete="off"
+                              className={inputClass(!!(touched.displayName && fieldErrors.displayName))}
+                            />
                             <AnimatePresence>
                               {touched.displayName && fieldErrors.displayName && (
                                 <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
@@ -722,16 +713,13 @@ export default function AuthPage() {
                           {/* Email */}
                           <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 }}>
                             <label className="block text-[13px] font-medium text-[var(--text-secondary)] mb-2 ml-1">Email</label>
-                            <div className="relative group">
-                              <HiOutlineEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[var(--text-muted)] group-focus-within:text-[var(--accent-primary)] transition-colors" />
-                              <input
-                                type="email" name="email" value={regEmail}
-                                onChange={(e) => handleRegChange('email', e.target.value)}
-                                onBlur={handleRegBlur}
-                                placeholder="name@example.com" autoComplete="off"
-                                className={inputClass(!!(touched.email && fieldErrors.email))}
-                              />
-                            </div>
+                            <input
+                              type="email" name="email" value={regEmail}
+                              onChange={(e) => handleRegChange('email', e.target.value)}
+                              onBlur={handleRegBlur}
+                              placeholder="name@example.com" autoComplete="off"
+                              className={inputClass(!!(touched.email && fieldErrors.email))}
+                            />
                             <AnimatePresence>
                               {touched.email && fieldErrors.email && (
                                 <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
@@ -743,18 +731,17 @@ export default function AuthPage() {
                           {/* Password */}
                           <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
                             <label className="block text-[13px] font-medium text-[var(--text-secondary)] mb-2 ml-1">Password</label>
-                            <div className="relative group">
-                              <HiOutlineLockClosed className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[var(--text-muted)] group-focus-within:text-[var(--accent-primary)] transition-colors" />
+                            <div className="relative">
                               <input
                                 type={showRegPassword ? 'text' : 'password'}
                                 name="password" value={regPassword}
                                 onChange={(e) => handleRegChange('password', e.target.value)}
                                 onBlur={handleRegBlur}
                                 placeholder="Min. 6 characters" autoComplete="new-password"
-                                className={`${inputClass(!!(touched.password && fieldErrors.password))} !pr-12`}
+                                className={`${inputClass(!!(touched.password && fieldErrors.password))} pr-12`}
                               />
-                              <button type="button" onClick={() => setShowRegPassword(!showRegPassword)}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--accent-primary)] transition-colors p-0.5">
+                              <button type="button" onClick={() => setShowRegPassword(!showRegPassword)} aria-label={showRegPassword ? 'Hide password' : 'Show password'}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--accent-primary)] transition-colors p-1">
                                 {showRegPassword ? <AiOutlineEyeInvisible className="w-[18px] h-[18px]" /> : <AiOutlineEye className="w-[18px] h-[18px]" />}
                               </button>
                             </div>
@@ -778,8 +765,7 @@ export default function AuthPage() {
                           {/* Confirm */}
                           <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35 }}>
                             <label className="block text-[13px] font-medium text-[var(--text-secondary)] mb-2 ml-1">Confirm Password</label>
-                            <div className="relative group">
-                              <HiOutlineLockClosed className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[var(--text-muted)] group-focus-within:text-[var(--accent-primary)] transition-colors" />
+                            <div className="relative">
                               <input
                                 type={showRegPassword ? 'text' : 'password'}
                                 name="confirmPassword" value={regConfirm}
@@ -789,7 +775,7 @@ export default function AuthPage() {
                                 className={inputClass(!!(touched.confirmPassword && fieldErrors.confirmPassword))}
                               />
                               {regConfirm && !fieldErrors.confirmPassword && regConfirm === regPassword && (
-                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--success)] animate-bounce-in">
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--success)]">
                                   <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                   </svg>

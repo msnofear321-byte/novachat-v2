@@ -101,7 +101,7 @@ export default function ProfilePage() {
   const igInvalid = igHandle.length > 0 && !isValidInstagramHandle(igHandle);
 
   const fieldInput =
-    'w-full px-4 py-3 bg-[var(--bg-input)] border border-[var(--border-primary)] rounded-[14px] text-[var(--text-primary)] text-[15px] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/40 focus:border-[var(--accent-primary)]/40 transition-all';
+    'input-premium w-full px-4 py-3';
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar bg-[var(--bg-primary)]">
@@ -176,38 +176,26 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Instagram card */}
+        {/* Instagram card — only shown once an Instagram handle is set */}
+        {igUrl && (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.12, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           className="premium-card premium-card-hover p-4 mb-6 flex items-center gap-3.5"
         >
-          <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0 ${
-            igUrl
-              ? 'bg-gradient-to-br from-[#E1306C] via-[#C13584] to-[#833AB4] text-white shadow-[0_4px_18px_rgba(225,48,108,0.35)]'
-              : 'bg-[var(--accent-glow)] text-[var(--accent-primary)]'
-          }`}>
+          <div className="w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-[#E1306C] via-[#C13584] to-[#833AB4] text-white shadow-[0_4px_18px_rgba(225,48,108,0.35)]">
             <FaInstagram className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-[var(--text-primary)] text-[15px]">Instagram</p>
-            {igUrl ? (
-              <a href={igUrl} target="_blank" rel="noopener noreferrer"
-                className="text-[var(--accent-secondary)] text-[14px] font-medium truncate block hover:underline">
-                @{igHandle}
-              </a>
-            ) : (
-              <p className="text-[var(--text-muted)] text-[13px]">Share your Instagram with your people</p>
-            )}
+            <a href={igUrl} target="_blank" rel="noopener noreferrer"
+              className="text-[var(--accent-secondary)] text-[14px] font-medium truncate block hover:underline">
+              @{igHandle}
+            </a>
           </div>
-          {!igUrl && (
-            <button onClick={() => instagramInputRef.current?.focus()}
-              className="px-3.5 py-2 rounded-[11px] text-[12px] font-semibold text-[var(--accent-primary)] bg-[var(--accent-primary)]/10 hover:bg-[var(--accent-primary)]/20 transition-all flex-shrink-0">
-              Add Instagram
-            </button>
-          )}
         </motion.div>
+        )}
 
         {/* Profile info card */}
         <div className="premium-card p-5 mb-6">
@@ -246,7 +234,7 @@ export default function ProfilePage() {
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-[15px] font-medium">@</div>
                 <input ref={instagramInputRef} type="text" value={instagram} onChange={(e) => setInstagram(e.target.value)}
                   placeholder="username" autoCapitalize="none" autoCorrect="off" spellCheck={false}
-                  className={`${fieldInput} pl-10`} />
+                  className={`${fieldInput} pl-10 ${igInvalid ? 'input-error' : ''}`} />
               </div>
               {igInvalid && (
                 <p className="text-[var(--warning)] text-[12px] mt-1.5 ml-1">

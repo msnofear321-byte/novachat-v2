@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { motion } from 'framer-motion';
+import type { IconType } from 'react-icons';
 import {
   HiOutlineChatBubbleLeftRight,
-  HiOutlineEye,
+  HiOutlineFolderOpen,
   HiOutlineCog6Tooth,
   HiOutlineMagnifyingGlass,
 } from 'react-icons/hi2';
@@ -14,14 +15,14 @@ import UserAvatar from '@/components/UserAvatar';
 import SearchUsers from '@/components/SearchUsers';
 
 interface TabItem {
-  icon: typeof HiOutlineEye;
+  icon: IconType;
   label: string;
   path: string;
 }
 
 const tabs: TabItem[] = [
   { icon: HiOutlineChatBubbleLeftRight, label: 'Chats', path: '/' },
-  { icon: HiOutlineEye, label: 'Status', path: '/status' },
+  { icon: HiOutlineFolderOpen, label: 'Documents', path: '/documents' },
   { icon: HiOutlineCog6Tooth, label: 'Settings', path: '/settings' },
 ];
 

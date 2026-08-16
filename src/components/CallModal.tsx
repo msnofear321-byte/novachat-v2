@@ -6,11 +6,11 @@ import {
   HiOutlineSpeakerWave, HiOutlineArrowsRightLeft,
 } from 'react-icons/hi2';
 import {
-  startCall, answerCall, endCall, rejectCall, cancelCall,
+  startCall, answerCall, endCall, rejectCall, cancelCall, cleanupCall,
   subscribeToCall, subscribeToIncomingCalls, toggleMuteLocal,
   toggleCameraLocal, switchCameraLocal, getUserProfile,
-  getLocalStream, getRemoteStream,
-  type CallData,
+  getLocalStream, getRemoteStream, onRemoteStreamChange, onLocalStreamChange,
+  type CallData, type RemoteStreamInfo,
 } from '@/services/calls';
 import { useAuth } from '@/context/AuthContext';
 
@@ -96,6 +96,11 @@ export default function CallModal() {
   const [speakerOn, setSpeakerOn] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [endReason, setEndReason] = useState<string | null>(null);
+  const [callType, setCallType] = useState<'voice' | 'video' | null>(null);
+  const [remoteInfo, setRemoteInfo] = useState<RemoteStreamInfo>({
+    stream: null, hasVideo: false, cameraOff: false, connecting: true,
+  });
   const [callerProfile, setCallerProfile] = useState<{ displayName: string; photoURL: string } | null>(null);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -106,6 +111,7 @@ export default function CallModal() {
   // Use ref to track viewState for subscription callbacks (avoids stale closure)
   const viewStateRef = useRef<CallViewState>('idle');
   const callIdRef = useRef<string | null>(null);
+  const activeCallRef = useRef<CallData | null>(null);
 
   const updateViewState = useCallback((state: CallViewState) => {
     viewStateRef.current = state;
@@ -117,16 +123,51 @@ export default function CallModal() {
     setCallId(id);
   }, []);
 
+  const syncMedia = useCallback(() => {
+    const local = getLocalStream();
+    const remote = getRemoteStream();
+    if (localVideoRef.current) localVideoRef.current.srcObject = local;
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remote;
+    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = remote;
+    // Play remote media. Answering/receiving is a user gesture, so call play()
+    // here; if the browser still blocks it, retry on the next user gesture.
+    [remoteVideoRef.current, remoteAudioRef.current].forEach((el) => {
+      if (el && el.srcObject) {
+        const p = el.play();
+        if (p) {
+          p.catch(() => {
+            const resume = () => {
+              el.play().catch(() => {});
+              window.removeEventListener('touchstart', resume);
+              window.removeEventListener('click', resume);
+            };
+            window.addEventListener('touchstart', resume);
+            window.addEventListener('click', resume);
+          });
+        }
+      }
+    });
+  }, []);
+
+  // Keep activeCall mirrored for subscription callbacks
+  const setActiveCallBoth = useCallback((call: CallData | null) => {
+    activeCallRef.current = call;
+    setActiveCall(call);
+  }, []);
+
   const cleanupUI = useCallback(() => {
     updateViewState('idle');
-    setActiveCall(null);
+    setActiveCallBoth(null);
     updateCallId(null);
     setMuted(false);
     setVideoEnabled(true);
     setSpeakerOn(false);
     setElapsed(0);
     setErrorMsg(null);
+    setEndReason(null);
+    setCallType(null);
     setCallerProfile(null);
+    setRemoteInfo({ stream: null, hasVideo: false, cameraOff: false, connecting: true });
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = undefined;
@@ -134,7 +175,9 @@ export default function CallModal() {
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
     if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null;
-  }, [updateViewState, updateCallId]);
+  }, [updateViewState, updateCallId, setActiveCallBoth]);
+
+  const isVideo = callType === 'video' || activeCall?.type === 'video';
 
   // ── Listen for incoming calls ────────────────────────
   useEffect(() => {
@@ -159,7 +202,8 @@ export default function CallModal() {
           setCallerProfile(profile);
         }
 
-        setActiveCall(call);
+        setActiveCallBoth(call);
+        setCallType(call.type);
         updateCallId(call.id);
         updateViewState('incoming');
         playRingtone();
@@ -186,7 +230,7 @@ export default function CallModal() {
       unsub();
       stopRingtone();
     };
-  }, [user?.uid, cleanupUI, updateViewState, updateCallId]);
+  }, [user?.uid, cleanupUI, updateViewState, updateCallId, setActiveCallBoth]);
 
   // ── Subscribe to active call state changes ───────────
   useEffect(() => {
@@ -196,36 +240,23 @@ export default function CallModal() {
       if (!call) {
         if (viewStateRef.current !== 'idle') {
           stopRingtone();
+          cleanupCall();
           cleanupUI();
         }
         return;
       }
 
-      setActiveCall(call);
+      setActiveCallBoth(call);
 
       if (call.status === 'connected' && viewStateRef.current !== 'connected') {
         updateViewState('connected');
         stopRingtone();
-
-        const stream = getRemoteStream();
-        if (stream && remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = stream;
-          try { remoteVideoRef.current.play().catch(() => {}); } catch { /* ignore */ }
-        }
-        if (stream && remoteAudioRef.current && call.type !== 'video') {
-          try {
-            remoteAudioRef.current.srcObject = stream;
-            remoteAudioRef.current.play().catch(() => {});
-          } catch { /* ignore */ }
-        }
-        if (stream && localVideoRef.current && call.type === 'video') {
-          localVideoRef.current.srcObject = getLocalStream();
-          try { localVideoRef.current.play().catch(() => {}); } catch { /* ignore */ }
-        }
+        syncMedia();
       }
 
       if (call.status === 'ended' || call.status === 'rejected' || call.status === 'missed' || call.status === 'cancelled') {
         stopRingtone();
+        cleanupCall();
         if (call.status === 'missed') updateViewState('missed');
         else updateViewState('ended');
         setTimeout(cleanupUI, 2500);
@@ -233,7 +264,27 @@ export default function CallModal() {
     });
 
     return unsub;
-  }, [callId, cleanupUI, updateViewState]);
+  }, [callId, cleanupUI, updateViewState, setActiveCallBoth, syncMedia]);
+
+  // ── React to remote/local stream changes ─────────────
+  useEffect(() => {
+    const unsubRemote = onRemoteStreamChange((info) => {
+      setRemoteInfo(info);
+      syncMedia();
+    });
+    const unsubLocal = onLocalStreamChange(() => {
+      syncMedia();
+    });
+    return () => {
+      unsubRemote();
+      unsubLocal();
+    };
+  }, [syncMedia]);
+
+  // Sync media elements on state changes (elements mount/unmount)
+  useEffect(() => {
+    syncMedia();
+  }, [viewState, callId, isVideo, remoteInfo, syncMedia]);
 
   // ── Timer for connected state ────────────────────────
   useEffect(() => {
@@ -243,22 +294,6 @@ export default function CallModal() {
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [viewState]);
-
-  // ── Sync video elements with streams ─────────────────
-  useEffect(() => {
-    if (viewState !== 'connected') return;
-    if (activeCall?.type !== 'video') return;
-
-    const local = getLocalStream();
-    const remote = getRemoteStream();
-
-    if (localVideoRef.current && local) {
-      localVideoRef.current.srcObject = local;
-    }
-    if (remoteVideoRef.current && remote) {
-      remoteVideoRef.current.srcObject = remote;
-    }
-  }, [viewState, activeCall?.type]);
 
   // ── Listen for call-start event from ChatPage ────────
   useEffect(() => {
@@ -274,13 +309,17 @@ export default function CallModal() {
 
   // ── Listen for call-ended event ──────────────────────
   useEffect(() => {
-    function handleCallEnded() {
+    function handleCallEnded(e: Event) {
+      const reason = (e as CustomEvent).detail?.reason;
       stopRingtone();
-      cleanupUI();
+      cleanupCall();
+      if (reason) setEndReason(reason);
+      updateViewState('ended');
+      setTimeout(cleanupUI, 2500);
     }
     window.addEventListener('call-ended', handleCallEnded);
     return () => window.removeEventListener('call-ended', handleCallEnded);
-  }, [cleanupUI]);
+  }, [cleanupUI, updateViewState]);
 
   // ── Request notification permission on mount ─────────
   useEffect(() => {
@@ -293,10 +332,12 @@ export default function CallModal() {
 
   async function handleStartCall(receiverId: string, receiverName: string, receiverPhoto: string, type: 'voice' | 'video') {
     setErrorMsg(null);
+    setCallType(type);
     updateViewState('outgoing');
     try {
       const id = await startCall(receiverId, receiverName, receiverPhoto, type);
       updateCallId(id);
+      syncMedia();
     } catch (err) {
       console.error('[CallModal] Failed to start call:', err);
       const msg = err instanceof Error ? err.message : 'Failed to start call';
@@ -310,11 +351,16 @@ export default function CallModal() {
     if (!activeCall) return;
     stopRingtone();
     setCallerProfile(null);
+    setCallType(video ? 'video' : 'voice');
     try {
       await answerCall(activeCall.id, video);
+      syncMedia();
     } catch (err) {
       console.error('[CallModal] Failed to answer call:', err);
-      cleanupUI();
+      const msg = err instanceof Error ? err.message : 'Call connection failed';
+      setErrorMsg(msg);
+      updateViewState('ended');
+      setTimeout(cleanupUI, 2500);
     }
   }
 
@@ -358,8 +404,6 @@ export default function CallModal() {
   // ── Render ──────────────────────────────────────────
 
   if (viewState === 'idle') return null;
-
-  const isVideo = activeCall?.type === 'video';
 
   // Determine name/photo to display
   let displayName = 'Unknown';
@@ -425,6 +469,22 @@ export default function CallModal() {
         {viewState === 'connected' && isVideo && (
           <div className="absolute inset-0 bg-black">
             <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+            {(remoteInfo.connecting || remoteInfo.cameraOff || !remoteInfo.hasVideo) && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0f]">
+                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-white/15 mb-4">
+                  {displayPhoto ? (
+                    <img src={displayPhoto} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-[var(--accent-primary)]/30 to-[var(--accent-secondary)]/30 flex items-center justify-center text-white text-3xl font-bold">
+                      {displayName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <p className="text-white/60 text-sm">
+                  {remoteInfo.connecting ? 'Connecting…' : 'Camera off'}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -486,22 +546,27 @@ export default function CallModal() {
                 {viewState === 'outgoing' && 'Calling...'}
                 {viewState === 'incoming' && (isVideo ? 'Incoming video call' : 'Incoming voice call')}
                 {viewState === 'connected' && formatDuration(elapsed)}
-                {viewState === 'ended' && 'Call ended'}
+                {viewState === 'ended' && (endReason || errorMsg || 'Call ended')}
                 {viewState === 'missed' && 'Missed call'}
-                {errorMsg && viewState === 'ended' && errorMsg}
               </p>
             </div>
           </motion.div>
 
-          {/* Local video PIP (video call, connected state) */}
-          {viewState === 'connected' && isVideo && (
+          {/* Local video PIP (video call, outgoing + connected state) */}
+          {isVideo && (viewState === 'outgoing' || viewState === 'connected') && (
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="absolute top-6 right-6 w-32 h-44 rounded-2xl overflow-hidden border-2 border-white/20 z-20"
+              className="absolute top-6 right-6 w-32 h-44 rounded-2xl overflow-hidden border-2 border-white/20 z-20 bg-black"
               style={{ boxShadow: '0 8px 30px rgba(0,0,0,0.5)' }}
             >
               <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+              {!videoEnabled && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0f]">
+                  <HiOutlineVideoCameraSlash className="w-7 h-7 text-white/50 mb-1" />
+                  <p className="text-white/50 text-[11px]">Camera off</p>
+                </div>
+              )}
             </motion.div>
           )}
 

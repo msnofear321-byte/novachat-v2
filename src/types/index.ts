@@ -117,3 +117,27 @@ export interface Note {
   createdAt: number;
   updatedAt: number;
 }
+
+export type DocumentCategory =
+  | 'aadhaar'
+  | 'pan'
+  | 'college-id'
+  | 'school-id'
+  | 'driving-licence'
+  | 'passport'
+  | 'certificates'
+  | 'other';
+
+export interface UserDocument {
+  id: string;
+  ownerId: string;
+  category: DocumentCategory;
+  name: string;
+  fileType: 'image' | 'pdf';
+  mimeType: string;
+  fileName: string;
+  fileSize: number;
+  storagePath: string;
+  createdAt: number;
+  updatedAt: number;
+}

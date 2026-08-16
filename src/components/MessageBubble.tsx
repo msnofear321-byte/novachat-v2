@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, memo, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlineStar, HiOutlineArrowUturnRight, HiOutlinePencilSquare, HiOutlineTrash, HiOutlineChatBubbleLeftRight, HiOutlineDocumentDuplicate, HiOutlineMapPin } from 'react-icons/hi2';
+import { HiOutlineArrowUturnRight, HiOutlineTrash, HiOutlineChatBubbleLeftRight, HiOutlineDocumentDuplicate, HiOutlineMapPin } from 'react-icons/hi2';
 import { HiStar } from 'react-icons/hi';
 import { useAuth } from '@/context/AuthContext';
 import { formatTimestamp } from '@/utils/format';
@@ -52,7 +52,7 @@ function highlightText(text: string, highlight: string): React.ReactNode {
 
 function MessageBubble({
   message, isOwn, showSender, senderName, otherUserName,
-  onReply, onForward, onStar, onDelete, onDeleteForEveryone, onEdit, onCopy, onScrollToMessage, onReact, onPin, highlight,
+  onReply, onForward, onStar, onDelete, onDeleteForEveryone, onEdit, onCopy, onScrollToMessage, onReact, highlight,
 }: MessageBubbleProps) {
   const { user } = useAuth();
   const [editing, setEditing] = useState(false);
@@ -108,7 +108,6 @@ function MessageBubble({
     };
   }, [menu]);
 
-  const canEdit = isOwn && message.type === 'text' && !message.deleted && !message.deletedForEveryone && message.createdAt && (Date.now() - message.createdAt < 15 * 60 * 1000);
   const canDeleteForEveryone = isOwn && !message.deleted && !message.deletedForEveryone && message.createdAt && (Date.now() - message.createdAt < 15 * 60 * 1000);
 
   function handleSaveEdit() {
@@ -143,7 +142,7 @@ function MessageBubble({
       return;
     }
     const pad = 12;
-    const menuW = 220;
+    const menuW = 300;
     const menuH = 400;
     const clampedX = Math.max(pad, Math.min(x, window.innerWidth - menuW - pad));
     const clampedY = Math.max(pad, Math.min(y, window.innerHeight - menuH - pad));
@@ -307,46 +306,45 @@ function MessageBubble({
   const isCoarse = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
 
   const reactionRow = (
-    <div className="flex items-center justify-between gap-0.5 px-3 py-2">
-      {MESSAGE_REACTIONS.map((emoji) => {
-        const mine = message.reactions?.[emoji]?.includes(user?.uid || '');
-        return (
-          <button
-            key={emoji}
-            onClick={() => { onReact(message, emoji); closeMenu(); }}
-            className={`w-9 h-9 rounded-full flex items-center justify-center text-[19px] transition-all active:scale-90 ${
-              mine ? 'bg-[var(--accent-primary)]/20' : 'hover:bg-[var(--hover-bg)]'
-            }`}
-            title={`React ${emoji}`}
-          >
-            {emoji}
-          </button>
-        );
-      })}
+    <div className="px-3 pt-2">
+      <p className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">React</p>
+      <div className="flex items-center justify-between gap-0.5">
+        {MESSAGE_REACTIONS.map((emoji) => {
+          const mine = message.reactions?.[emoji]?.includes(user?.uid || '');
+          return (
+            <button
+              key={emoji}
+              onClick={() => { onReact(message, emoji); closeMenu(); }}
+              className={`w-9 h-9 rounded-full flex items-center justify-center text-[19px] transition-all active:scale-90 ${
+                mine ? 'bg-[var(--accent-primary)]/20' : 'hover:bg-[var(--hover-bg)]'
+              }`}
+              title={`React ${emoji}`}
+            >
+              {emoji}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 
-  const actionList = (
-    <div>
-      {[
-        { icon: HiOutlineChatBubbleLeftRight, label: 'Reply', action: () => { onReply(message); closeMenu(); } },
-        { icon: HiOutlineDocumentDuplicate, label: 'Copy', action: () => { handleCopy(); closeMenu(); } },
-        { icon: HiOutlineArrowUturnRight, label: 'Forward', action: () => { onForward(message); closeMenu(); } },
-        { icon: message.starred ? HiStar : HiOutlineStar, label: message.starred ? 'Unstar' : 'Star', filled: message.starred, action: () => { onStar(message); closeMenu(); } },
-        { icon: HiOutlineMapPin, label: message.pinned ? 'Unpin' : 'Pin', filled: !!message.pinned, action: () => { onPin?.(message); closeMenu(); } },
-        ...(canEdit ? [{ icon: HiOutlinePencilSquare, label: 'Edit', action: () => { setEditing(true); closeMenu(); } }] : []),
-        ...(isOwn || canDeleteForEveryone ? [{ icon: HiOutlineTrash, label: 'Delete', danger: true, action: () => setMenuMode('delete') }] : []),
-      ].map(({ icon: Icon, label, action, danger, filled }) => (
-        <button key={label} onClick={(e) => { e.stopPropagation(); action(); }}
-          className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-all ${
-            danger
-              ? 'text-[var(--danger)] hover:bg-[var(--danger-bg)]'
-              : 'text-[var(--text-primary)] hover:bg-[var(--hover-bg)]'
-          }`}>
-          <Icon className={`w-4 h-4 flex-shrink-0 ${filled ? 'text-[var(--accent-star)]' : danger ? 'text-[var(--danger)]' : 'text-[var(--text-muted)]'}`} />
-          <span className="text-[13px] font-medium">{label}</span>
-        </button>
-      ))}
+  const compactAction = (Icon: React.FC<{ className?: string }>, label: string, danger: boolean, action: () => void) => (
+    <button key={label} onClick={(e) => { e.stopPropagation(); action(); }}
+      className={`flex flex-col items-center justify-center gap-1 py-2.5 px-2 min-w-[52px] rounded-[12px] transition-all active:scale-90 ${
+        danger ? 'text-[var(--danger)] hover:bg-[var(--danger-bg)]' : 'text-[var(--text-secondary)] hover:text-[var(--accent-primary)] hover:bg-[var(--hover-bg)]'
+      }`}>
+      <Icon className={`w-5 h-5 ${danger ? 'text-[var(--danger)]' : ''}`} />
+      <span className={`text-[10.5px] font-medium ${danger ? 'text-[var(--danger)]' : ''}`}>{label}</span>
+    </button>
+  );
+
+  const actionBar = (
+    <div className="flex items-center justify-around px-2 py-1">
+      {compactAction(HiOutlineChatBubbleLeftRight, 'Reply', false, () => { onReply(message); closeMenu(); })}
+      {compactAction(HiOutlineArrowUturnRight, 'Forward', false, () => { onForward(message); closeMenu(); })}
+      {compactAction(HiOutlineDocumentDuplicate, 'Copy', false, () => { handleCopy(); closeMenu(); })}
+      {compactAction(HiStar, 'Star', false, () => { onStar(message); closeMenu(); })}
+      {isOwn && compactAction(HiOutlineTrash, 'Delete', true, () => setMenuMode('delete'))}
     </div>
   );
 
@@ -536,8 +534,8 @@ function MessageBubble({
                   ) : (
                     <>
                       {reactionRow}
-                      <div className="mx-3 mt-1 border-t border-[var(--border-primary)]" />
-                      {actionList}
+                      <div className="mx-3 mt-2 border-t border-[var(--border-primary)]" />
+                      {actionBar}
                     </>
                   )}
                 </motion.div>
@@ -550,15 +548,15 @@ function MessageBubble({
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.92 }}
                   transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
-                  className="fixed z-[70] w-[220px] glass-premium rounded-[14px] shadow-[var(--shadow-xl)] overflow-hidden py-2"
+                  className="fixed z-[70] w-[300px] glass-premium rounded-[14px] shadow-[var(--shadow-xl)] overflow-hidden py-1.5"
                 >
                   {menuMode === 'delete' ? (
                     deleteMenu
                   ) : (
                     <>
                       {reactionRow}
-                      <div className="mx-3 mt-1 border-t border-[var(--border-primary)]" />
-                      {actionList}
+                      <div className="mx-3 mt-2 border-t border-[var(--border-primary)]" />
+                      {actionBar}
                     </>
                   )}
                 </motion.div>
